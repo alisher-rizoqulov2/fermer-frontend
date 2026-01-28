@@ -1,29 +1,30 @@
-import React from "react"
-import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
-import { Analytics } from '@vercel/analytics/next'
-import './globals.css'
+import React from "react";
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
+import "./globals.css";
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+const geist = Geist({ subsets: ["latin"] });
+const geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Fermer Pro - Qishloq Xo\'jaligi Boshqaruvi',
-  description: 'Zamonaviy fermerlik boshqaruv tizimi',
-  generator: 'v0.app',
-}
+  title: "Fermer Pro - Qishloq Xo'jaligi Boshqaruvi",
+  description: "Zamonaviy fermerlik boshqaruv tizimi",
+  generator: "v0.app",
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
-    <html lang="uz">
-      <body className={`font-sans antialiased`}>
+    // O'ZGARISH: h-full classi qo'shildi
+    <html lang="uz" className="h-full">
+      <body className={`font-sans antialiased h-full`}>
         {children}
         <Analytics />
       </body>
     </html>
-  )
+  );
 }

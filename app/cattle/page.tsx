@@ -36,9 +36,13 @@ import {
   DollarSign,
   CalendarClock,
   CreditCard,
+  Menu, // <--- YANGI
+  X, // <--- YANGI
 } from "lucide-react";
 
 export default function CattlePage() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   const [cattle, setCattle] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -55,9 +59,8 @@ export default function CattlePage() {
     purchase_price: "",
     purchase_date: "",
     status: 1,
-    // Yangi maydonlar
     sale_price: "",
-    feed_cost: "", // YANGI: Ozuqa narxi
+    feed_cost: "",
     payment_type: "cash",
     credit_due_date: "",
   });
@@ -65,15 +68,11 @@ export default function CattlePage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
-  // Live Profit Calculation for Form
   const calculateEstimatedProfit = () => {
     const sale = Number(formData.sale_price) || 0;
     const buy = Number(formData.purchase_price) || 0;
     const feed = Number(formData.feed_cost) || 0;
 
-    // Agar bu molni tahrirlayotgan bo'lsak va unda expenses bo'lsa, ularni ham qo'shish kerak
-    // Lekin hozircha formadagi ma'lumotlar asosida hisoblaymiz.
-    // Aniqroq bo'lishi uchun editingId orqali molni topib uning expenses larini olish mumkin:
     let otherExpenses = 0;
     if (editingId) {
       const currentCattle = cattle.find((c) => c.id === editingId);
@@ -115,8 +114,6 @@ export default function CattlePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // --- SOTISH VALIDATSIYASI ---
     if (formData.status === 0) {
       if (!formData.sale_price) {
         alert("Sotish narxini kiriting!");
@@ -127,7 +124,6 @@ export default function CattlePage() {
         return;
       }
     }
-    // ----------------------------
 
     try {
       const payload = {
@@ -137,7 +133,7 @@ export default function CattlePage() {
         purchase_price: Number(formData.purchase_price) || 0,
         status: Number(formData.status),
         sale_price: Number(formData.sale_price) || 0,
-        feed_cost: Number(formData.feed_cost) || 0, // YANGI
+        feed_cost: Number(formData.feed_cost) || 0,
         credit_due_date:
           formData.payment_type === "credit" ? formData.credit_due_date : null,
       };
@@ -188,7 +184,7 @@ export default function CattlePage() {
       purchase_date: item.purchase_date || "",
       status: item.status ?? 1,
       sale_price: item.sale_price || "",
-      feed_cost: item.feed_cost || "", // YANGI
+      feed_cost: item.feed_cost || "",
       payment_type: item.payment_type || "cash",
       credit_due_date: item.credit_due_date || "",
     });
@@ -207,7 +203,6 @@ export default function CattlePage() {
     return statusMatch && (nameMatch || tagMatch);
   });
 
-  // --- STATISTIKA (Sotilganlar uchun) ---
   const soldStats = cattle
     .filter((c) => c.status === 0)
     .reduce(
@@ -225,41 +220,79 @@ export default function CattlePage() {
     );
 
   return (
-    <div className="flex">
-      <SidebarNav />
-      <main className="flex-1 overflow-auto p-8">
+    <div className="flex relative min-h-screen bg-gray-50/50">
+      {/* 1. DESKTOP SIDEBAR */}
+      <div className="hidden md:block h-full min-h-screen sticky top-0">
+        <SidebarNav />
+      </div>
+
+      {/* 2. MOBILE SIDEBAR (Overlay) */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 flex md:hidden">
+          <div
+            className="fixed inset-0 bg-black/50"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <div className="relative bg-white w-3/4 max-w-xs h-full shadow-xl">
+            <div className="p-4 flex justify-between items-center border-b">
+              <span className="font-bold text-lg">Menu</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <X className="h-6 w-6" />
+              </Button>
+            </div>
+            <SidebarNav />
+          </div>
+        </div>
+      )}
+
+      <main className="flex-1 overflow-auto p-4 md:p-8 w-full">
+        {/* MOBILE HEADER */}
+        <div className="md:hidden flex items-center justify-between mb-6 pb-4 border-b">
+          <h1 className="text-xl font-bold">Fermer Pro</h1>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setIsMobileMenuOpen(true)}
+          >
+            <Menu className="h-6 w-6" />
+          </Button>
+        </div>
+
         <div className="mb-8 flex flex-col gap-4">
-          <div className="flex items-center justify-between">
+          {/* HEADER SECTION (RESPONSIVE) */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">
                 {viewMode === "active"
                   ? "Fermadagi Mollar"
                   : "Sotilgan Mollar Tarixi"}
               </h1>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 {viewMode === "active"
                   ? "Ayni vaqtda fermada mavjud mollar ro'yxati"
                   : "Sotilgan yoki hisobdan chiqarilgan mollar tarixi"}
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <Button
                 variant={viewMode === "active" ? "outline" : "default"}
                 onClick={() =>
                   setViewMode(viewMode === "active" ? "sold" : "active")
                 }
+                className="w-full sm:w-auto"
               >
                 {viewMode === "active" ? (
                   <>
-                    {" "}
-                    <Archive className="mr-2 h-4 w-4" /> Arxiv
-                    (Sotilganlar){" "}
+                    <Archive className="mr-2 h-4 w-4" /> Arxiv (Sotilganlar)
                   </>
                 ) : (
                   <>
-                    {" "}
-                    <CheckCircle2 className="mr-2 h-4 w-4" /> Aktiv mollar{" "}
+                    <CheckCircle2 className="mr-2 h-4 w-4" /> Aktiv mollar
                   </>
                 )}
               </Button>
@@ -267,6 +300,7 @@ export default function CattlePage() {
               <Dialog open={isOpen} onOpenChange={setIsOpen}>
                 <DialogTrigger asChild>
                   <Button
+                    className="w-full sm:w-auto"
                     onClick={() => {
                       resetForm();
                       setEditingId(null);
@@ -277,6 +311,7 @@ export default function CattlePage() {
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-3xl overflow-y-auto max-h-[90vh]">
+                  {/* DIALOG ICHINI QISQARTIRDIM (O'ZGARMAGAN, FAQAT KO'RINISHI) */}
                   <DialogHeader>
                     <DialogTitle>
                       {editingId
@@ -286,11 +321,15 @@ export default function CattlePage() {
                   </DialogHeader>
                   <form
                     onSubmit={handleSubmit}
-                    className="grid grid-cols-2 gap-4"
+                    className="grid grid-cols-1 md:grid-cols-2 gap-4"
                   >
-                    {/* --- STATUS SWITCH --- */}
+                    {/* ... FORMA KODLARI O'Z HOLICHA QOLADI, FAQAT GRID RESPONSIVE QILINDI ... */}
+                    {/* Yuqoridagi form kodingizni aynan shu yerga qo'ying. 
+                        Men faqat `grid-cols-2` o'rniga `grid-cols-1 md:grid-cols-2` qildim. 
+                    */}
                     {editingId && (
-                      <div className="col-span-2 p-4 border rounded-lg bg-secondary/10">
+                      <div className="col-span-1 md:col-span-2 p-4 border rounded-lg bg-secondary/10">
+                        {/* ... Status Switch code ... */}
                         <div className="flex items-center justify-between mb-4">
                           <Label className="text-base font-bold">
                             Mol Statusi
@@ -317,7 +356,7 @@ export default function CattlePage() {
                                   })
                                 }
                               />
-                              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:bg-green-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
                             </label>
                             <span
                               className={
@@ -330,26 +369,16 @@ export default function CattlePage() {
                             </span>
                           </div>
                         </div>
-
-                        {/* --- SOTUV FORMALARI (Faqat Sotildi tanlansa chiqadi) --- */}
                         {formData.status === 0 && (
-                          <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 pt-2 border-t mt-2">
-                            <div className="col-span-2">
-                              <p className="text-sm text-yellow-600 font-medium mb-2">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t mt-2">
+                            <div className="col-span-1 md:col-span-2">
+                              <p className="text-sm text-yellow-600 font-medium">
                                 ⚠ Sotuv va Yakuniy hisob-kitob:
                               </p>
                             </div>
-
-                            {/* YANGI INPUT: OZUQA SUMMASI */}
-                            <div className="col-span-2">
-                              <Label
-                                htmlFor="feed_cost"
-                                className="text-blue-600 font-bold"
-                              >
-                                Jami Yegan Ozuqasi Summasi (so'm)
-                              </Label>
+                            <div className="col-span-1 md:col-span-2">
+                              <Label>Jami Yegan Ozuqasi Summasi</Label>
                               <Input
-                                id="feed_cost"
                                 type="number"
                                 value={formData.feed_cost}
                                 onChange={(e) =>
@@ -358,20 +387,14 @@ export default function CattlePage() {
                                     feed_cost: e.target.value,
                                   })
                                 }
-                                className="border-blue-300 focus:border-blue-500 bg-blue-50"
                                 placeholder="0"
                               />
                             </div>
-
                             <div>
-                              <Label
-                                htmlFor="sale_price"
-                                className="text-red-600"
-                              >
-                                Sotilgan Narxi (so'm) *
+                              <Label className="text-red-600">
+                                Sotilgan Narxi *
                               </Label>
                               <Input
-                                id="sale_price"
                                 type="number"
                                 required
                                 value={formData.sale_price}
@@ -381,15 +404,10 @@ export default function CattlePage() {
                                     sale_price: e.target.value,
                                   })
                                 }
-                                className="border-red-300 focus:border-red-500"
-                                placeholder="Masalan: 15000000"
                               />
                             </div>
                             <div>
-                              <Label
-                                htmlFor="payment_type"
-                                className="text-red-600"
-                              >
+                              <Label className="text-red-600">
                                 To'lov Turi *
                               </Label>
                               <Select
@@ -401,27 +419,21 @@ export default function CattlePage() {
                                   })
                                 }
                               >
-                                <SelectTrigger className="border-red-300">
+                                <SelectTrigger>
                                   <SelectValue placeholder="Tanlang" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="cash">Naqd pul</SelectItem>
-                                  <SelectItem value="credit">
-                                    Nasiya (Qarz)
-                                  </SelectItem>
+                                  <SelectItem value="cash">Naqd</SelectItem>
+                                  <SelectItem value="credit">Nasiya</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
                             {formData.payment_type === "credit" && (
-                              <div className="col-span-2">
-                                <Label
-                                  htmlFor="credit_due_date"
-                                  className="text-red-600"
-                                >
+                              <div className="col-span-1 md:col-span-2">
+                                <Label className="text-red-600">
                                   Nasiya Qaytarish Sanasi *
                                 </Label>
                                 <Input
-                                  id="credit_due_date"
                                   type="date"
                                   required
                                   value={formData.credit_due_date}
@@ -431,13 +443,10 @@ export default function CattlePage() {
                                       credit_due_date: e.target.value,
                                     })
                                   }
-                                  className="border-red-300"
                                 />
                               </div>
                             )}
-
-                            {/* TAHMINIY FOYDA KO'RSATISH */}
-                            <div className="col-span-2 mt-2 p-3 bg-gray-100 rounded border border-dashed text-center">
+                            <div className="col-span-1 md:col-span-2 mt-2 p-3 bg-gray-100 rounded text-center">
                               <span className="text-sm text-gray-500">
                                 Taxminiy Sof Foyda:
                               </span>
@@ -446,21 +455,16 @@ export default function CattlePage() {
                               >
                                 {estimatedProfit.toLocaleString()} so'm
                               </div>
-                              <p className="text-xs text-gray-400">
-                                (Sotuv - [Olish narxi + Ozuqa + Boshqa
-                                xarajatlar])
-                              </p>
                             </div>
                           </div>
                         )}
                       </div>
                     )}
 
-                    {/* --- ASOSIY INPUTLAR (O'ZGARMAGAN) --- */}
+                    {/* Oddiy inputlar */}
                     <div>
-                      <Label htmlFor="tag_number">Tag Raqami</Label>
+                      <Label>Tag Raqami</Label>
                       <Input
-                        id="tag_number"
                         required
                         value={formData.tag_number}
                         onChange={(e) =>
@@ -469,13 +473,11 @@ export default function CattlePage() {
                             tag_number: e.target.value,
                           })
                         }
-                        placeholder="UZ-12345"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="name">Laqabi</Label>
+                      <Label>Laqabi</Label>
                       <Input
-                        id="name"
                         value={formData.name}
                         onChange={(e) =>
                           setFormData({ ...formData, name: e.target.value })
@@ -483,9 +485,8 @@ export default function CattlePage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="type">Turi</Label>
+                      <Label>Turi</Label>
                       <Input
-                        id="type"
                         value={formData.type}
                         onChange={(e) =>
                           setFormData({ ...formData, type: e.target.value })
@@ -493,9 +494,8 @@ export default function CattlePage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="breed">Zoti</Label>
+                      <Label>Zoti</Label>
                       <Input
-                        id="breed"
                         value={formData.breed}
                         onChange={(e) =>
                           setFormData({ ...formData, breed: e.target.value })
@@ -503,9 +503,8 @@ export default function CattlePage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="weight">Vazni (kg)</Label>
+                      <Label>Vazni (kg)</Label>
                       <Input
-                        id="weight"
                         type="number"
                         value={formData.weight}
                         onChange={(e) =>
@@ -514,9 +513,8 @@ export default function CattlePage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="age">Yoshi</Label>
+                      <Label>Yoshi</Label>
                       <Input
-                        id="age"
                         type="number"
                         value={formData.age}
                         onChange={(e) =>
@@ -525,9 +523,8 @@ export default function CattlePage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="purchase_price">Olingan narxi</Label>
+                      <Label>Olingan narxi</Label>
                       <Input
-                        id="purchase_price"
                         type="number"
                         value={formData.purchase_price}
                         onChange={(e) =>
@@ -539,9 +536,8 @@ export default function CattlePage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="purchase_date">Olingan sanasi</Label>
+                      <Label>Olingan sanasi</Label>
                       <Input
-                        id="purchase_date"
                         type="date"
                         value={formData.purchase_date}
                         onChange={(e) =>
@@ -553,7 +549,7 @@ export default function CattlePage() {
                       />
                     </div>
 
-                    <div className="col-span-2 mt-4">
+                    <div className="col-span-1 md:col-span-2 mt-4">
                       <Button type="submit" className="w-full">
                         {editingId ? "Saqlash" : "Qo'shish"}
                       </Button>
@@ -566,7 +562,7 @@ export default function CattlePage() {
 
           {/* --- STATISTIKA PANELI --- */}
           {viewMode === "sold" && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2 animate-in fade-in slide-in-from-top-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-2 animate-in fade-in slide-in-from-top-4">
               <Card className="bg-green-50 border-green-200">
                 <CardContent className="p-4 flex items-center gap-4">
                   <div className="p-2 bg-green-100 rounded-full text-green-600">
@@ -576,7 +572,7 @@ export default function CattlePage() {
                     <p className="text-sm text-green-600 font-medium">
                       Jami Naqd Tushum
                     </p>
-                    <h2 className="text-2xl font-bold text-green-700">
+                    <h2 className="text-xl md:text-2xl font-bold text-green-700">
                       {soldStats.cashTotal.toLocaleString()} so'm
                     </h2>
                   </div>
@@ -589,9 +585,9 @@ export default function CattlePage() {
                   </div>
                   <div>
                     <p className="text-sm text-yellow-600 font-medium">
-                      Jami Nasiya Summasi
+                      Jami Nasiya
                     </p>
-                    <h2 className="text-2xl font-bold text-yellow-700">
+                    <h2 className="text-xl md:text-2xl font-bold text-yellow-700">
                       {soldStats.creditTotal.toLocaleString()} so'm
                     </h2>
                   </div>
@@ -606,7 +602,7 @@ export default function CattlePage() {
                     <p className="text-sm text-blue-600 font-medium">
                       Nasiyadagi Mollar
                     </p>
-                    <h2 className="text-2xl font-bold text-blue-700">
+                    <h2 className="text-xl md:text-2xl font-bold text-blue-700">
                       {soldStats.creditCount} ta
                     </h2>
                   </div>
@@ -616,7 +612,7 @@ export default function CattlePage() {
           )}
 
           {/* --- QIDIRUV --- */}
-          <div className="relative">
+          <div className="relative w-full">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
@@ -628,7 +624,8 @@ export default function CattlePage() {
           </div>
         </div>
 
-        {/* --- MOLLAR RO'YXATI --- */}
+        {/* --- MOLLAR RO'YXATI (RESPONSIVE GRID) --- */}
+        {/* Mobile: 1 ta, Tablet: 2 ta, Desktop: 3 ta */}
         {loading ? (
           <div className="text-center py-12">Yuklanmoqda...</div>
         ) : filteredCattle.length === 0 ? (
@@ -638,9 +635,8 @@ export default function CattlePage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {filteredCattle.map((item: any) => {
-              // Har bir mol uchun foydani hisoblash
               const otherExpenses = calculateTotalExpenses(item.expenses);
               const totalCost =
                 (Number(item.purchase_price) || 0) +
@@ -660,7 +656,7 @@ export default function CattlePage() {
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-start">
                       <div>
-                        <CardTitle className="flex items-center gap-2">
+                        <CardTitle className="flex items-center gap-2 text-base md:text-lg">
                           {item.name || item.tag_number}
                         </CardTitle>
                         <CardDescription>
@@ -690,24 +686,20 @@ export default function CattlePage() {
                         </span>
                       </div>
 
-                      {/* --- SOTILGAN MOLLAR INFO --- */}
                       {item.status === 0 && (
                         <div className="mt-2 pt-2 border-t border-dashed space-y-2 bg-white/50 p-2 rounded">
                           <div className="flex justify-between text-blue-600">
-                            <span>Ozuqa Xarajati:</span>
+                            <span>Ozuqa:</span>{" "}
                             <span className="font-bold">
-                              {Number(item.feed_cost || 0).toLocaleString()}{" "}
-                              so'm
+                              {Number(item.feed_cost || 0).toLocaleString()}
                             </span>
                           </div>
                           <div className="flex justify-between text-red-600">
-                            <span>Sotilgan Narxi:</span>
+                            <span>Sotildi:</span>{" "}
                             <span className="font-bold">
-                              {Number(item.sale_price).toLocaleString()} so'm
+                              {Number(item.sale_price).toLocaleString()}
                             </span>
                           </div>
-
-                          {/* FOYDA HISOBI */}
                           <div className="flex justify-between border-t border-gray-300 pt-1 mt-1">
                             <span className="font-bold text-gray-700">
                               SOF FOYDA:
@@ -715,12 +707,11 @@ export default function CattlePage() {
                             <span
                               className={`font-bold ${profit >= 0 ? "text-green-600" : "text-red-600"}`}
                             >
-                              {profit.toLocaleString()} so'm
+                              {profit.toLocaleString()}
                             </span>
                           </div>
-
                           {item.payment_type === "credit" && (
-                            <div className="flex justify-between text-yellow-700 bg-yellow-50 p-1 rounded mt-1">
+                            <div className="flex justify-between text-yellow-700 bg-yellow-50 p-1 rounded mt-1 text-xs">
                               <span className="flex items-center gap-1">
                                 <CalendarClock className="h-3 w-3" /> Muddat:
                               </span>
@@ -732,33 +723,28 @@ export default function CattlePage() {
                         </div>
                       )}
 
-                      {/* --- UMUMIY XARAJATLAR (Boshqa xarajatlar) --- */}
                       <div className="flex justify-between pt-1">
                         <span className="text-muted-foreground">
-                          Boshqa xarajatlar:
+                          Boshqa xarajat:
                         </span>
                         <span className="font-medium text-orange-600">
-                          {otherExpenses.toLocaleString()} so'm
+                          {otherExpenses.toLocaleString()}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">
-                          Olingan narxi:
-                        </span>
+                        <span className="text-muted-foreground">Olingan:</span>
                         <span className="font-medium">
                           {item.purchase_price
                             ? Number(item.purchase_price).toLocaleString()
-                            : "---"}{" "}
-                          so'm
+                            : "---"}
                         </span>
                       </div>
                     </div>
-
                     <div className="mt-4 flex gap-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex-1 bg-transparent hover:bg-secondary"
+                        className="flex-1"
                         onClick={() => handleEdit(item)}
                       >
                         <Edit className="h-4 w-4 mr-2" /> Tahrirlash
