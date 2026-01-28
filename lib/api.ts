@@ -1,5 +1,7 @@
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
+// const API_BASE_URL =
+//   process.env.NEXT_PUBLIC_API_URL || "http://54.178.217.232:3000/api";
+  // O'zgartiring:
+const API_BASE_URL = "http://54.178.217.232:3000/api";
 
 let authToken: string | null = null;
 
