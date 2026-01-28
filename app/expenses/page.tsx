@@ -2,7 +2,13 @@
 
 import React, { useEffect, useState } from "react";
 import { SidebarNav } from "@/components/sidebar-nav";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,17 +19,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { expensesAPI, cattleAPI } from "@/lib/api";
-import { Plus, Trash2, Edit, Search } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Edit,
+  Search,
+  Menu, // <--- YANGI
+  X, // <--- YANGI
+  Banknote,
+  CalendarDays,
+  Tag,
+} from "lucide-react";
 
 export default function ExpensesPage() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // <--- YANGI
   const [expenses, setExpenses] = useState<any[]>([]);
   const [cattle, setCattle] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,8 +43,8 @@ export default function ExpensesPage() {
   const [formData, setFormData] = useState({
     cattleId: "",
     amount: "",
-    category: "", // Backendda -> expenseType
-    description: "", // Backendda -> notes
+    category: "",
+    description: "",
     date: "",
   });
 
@@ -52,8 +62,6 @@ export default function ExpensesPage() {
         cattleAPI.getAll(),
       ]);
       setExpenses(Array.isArray(expensesData) ? expensesData : []);
-      // Faqat active mollarni ro'yxatga chiqaramiz (xarajat qilish uchun)
-      // Agar sotilganlarga ham xarajat yozish kerak bo'lsa .filter ni olib tashlang
       setCattle(Array.isArray(cattleData) ? cattleData : []);
     } catch (error) {
       console.error("Failed to load data:", error);
@@ -65,7 +73,6 @@ export default function ExpensesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Backendga to'g'ri formatda yuborish
       const payload = {
         cattle_id: Number(formData.cattleId),
         expenseType: formData.category,
@@ -96,7 +103,7 @@ export default function ExpensesPage() {
       amount: "",
       category: "",
       description: "",
-      date: new Date().toISOString().split("T")[0], // Bugungi sana default
+      date: new Date().toISOString().split("T")[0],
     });
   };
 
@@ -144,20 +151,63 @@ export default function ExpensesPage() {
   });
 
   return (
-    <div className="flex">
-      <SidebarNav />
-      <main className="flex-1 overflow-auto p-8">
+    <div className="flex bg-muted/10 min-h-screen relative">
+      {/* 1. DESKTOP SIDEBAR */}
+      <div className="hidden md:block h-full min-h-screen sticky top-0">
+        <SidebarNav />
+      </div>
+
+      {/* 2. MOBILE SIDEBAR (Overlay) */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 flex md:hidden">
+          <div
+            className="fixed inset-0 bg-black/50"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <div className="relative bg-white w-3/4 max-w-xs h-full shadow-xl">
+            <div className="p-4 flex justify-between items-center border-b">
+              <span className="font-bold text-lg">Menu</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <X className="h-6 w-6" />
+              </Button>
+            </div>
+            <SidebarNav />
+          </div>
+        </div>
+      )}
+
+      <main className="flex-1 overflow-auto p-4 md:p-8 w-full">
+        {/* MOBILE HEADER */}
+        <div className="md:hidden flex items-center justify-between mb-6 pb-4 border-b">
+          <h1 className="text-xl font-bold">Fermer Pro</h1>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setIsMobileMenuOpen(true)}
+          >
+            <Menu className="h-6 w-6" />
+          </Button>
+        </div>
+
         <div className="mb-8 flex flex-col gap-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Xarajatlar</h1>
-              <p className="text-muted-foreground">
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+                Xarajatlar
+              </h1>
+              <p className="text-muted-foreground text-sm">
                 Fermadagi barcha xarajatlar tarixi
               </p>
             </div>
+
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
               <DialogTrigger asChild>
                 <Button
+                  className="w-full md:w-auto"
                   onClick={() => {
                     resetForm();
                     setEditingId(null);
@@ -167,7 +217,7 @@ export default function ExpensesPage() {
                   Yangi xarajat
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-lg overflow-y-auto max-h-[90vh]">
                 <DialogHeader>
                   <DialogTitle>
                     {editingId
@@ -211,16 +261,20 @@ export default function ExpensesPage() {
 
                   <div>
                     <Label htmlFor="amount">Summa (so'm)</Label>
-                    <Input
-                      id="amount"
-                      type="number"
-                      required
-                      value={formData.amount}
-                      onChange={(e) =>
-                        setFormData({ ...formData, amount: e.target.value })
-                      }
-                      placeholder="0"
-                    />
+                    <div className="relative">
+                      <Banknote className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="amount"
+                        type="number"
+                        required
+                        className="pl-9"
+                        value={formData.amount}
+                        onChange={(e) =>
+                          setFormData({ ...formData, amount: e.target.value })
+                        }
+                        placeholder="0"
+                      />
+                    </div>
                   </div>
 
                   <div>
@@ -259,24 +313,24 @@ export default function ExpensesPage() {
             </Dialog>
           </div>
 
-          {/* QIDIRUV VA STATISTIKA */}
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+          {/* QIDIRUV VA STATISTIKA (RESPONSIVE) */}
+          <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
             <div className="relative w-full md:w-1/3">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="Mol, tag raqam yoki xarajat turi..."
+                placeholder="Qidirish..."
                 className="pl-8"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Card className="w-full md:w-auto min-w-[200px]">
+            <Card className="w-full md:w-auto min-w-[200px] shadow-sm bg-red-50 border-red-200">
               <CardContent className="p-4 flex flex-col items-center justify-center">
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm text-red-600 font-medium">
                   Jami Xarajatlar
                 </span>
-                <span className="text-2xl font-bold text-red-600">
+                <span className="text-2xl font-bold text-red-700">
                   {totalExpenses.toLocaleString()} so'm
                 </span>
               </CardContent>
@@ -297,95 +351,65 @@ export default function ExpensesPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="rounded-lg border bg-card">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="border-b bg-muted/50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">
-                      Mol (Tag Raqam)
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">
-                      Toifa
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">
-                      Summa
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">
-                      Sana
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">
-                      Izoh
-                    </th>
-                    <th className="px-6 py-3 text-right text-sm font-semibold">
-                      Amallar
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredExpenses.map((item: any) => {
-                    return (
-                      <tr
-                        key={item.id}
-                        className="border-b hover:bg-muted/30 transition-colors"
-                      >
-                        <td className="px-6 py-4 text-sm font-medium">
-                          {item.cattle ? (
-                            <div className="flex flex-col">
-                              <span>{item.cattle.name || "Nomsiz"}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {item.cattle.tag_number}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-red-500">
-                              O'chirilgan mol
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-sm">
-                          <span className="bg-secondary px-2 py-1 rounded text-xs font-semibold">
-                            {item.expenseType}
+          // JADVAL O'RNIGA GRID (RESPONSIVE KARTALAR)
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            {filteredExpenses.map((item: any) => (
+              <Card key={item.id} className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-1">
+                      <CardTitle className="text-base font-bold flex items-center gap-2">
+                        <Tag className="h-4 w-4 text-blue-500" />
+                        {item.expenseType}
+                      </CardTitle>
+                      <CardDescription className="text-xs">
+                        {item.cattle ? (
+                          <span>
+                            {item.cattle.tag_number} - {item.cattle.name}
                           </span>
-                        </td>
-                        <td className="px-6 py-4 text-sm font-bold text-red-600">
-                          {Number(item.amount || 0).toLocaleString()} so'm
-                        </td>
-                        <td className="px-6 py-4 text-sm text-muted-foreground">
-                          {item.date}
-                        </td>
-                        <td
-                          className="px-6 py-4 text-sm max-w-[200px] truncate"
-                          title={item.notes}
-                        >
-                          {item.notes || "-"}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => handleEdit(item)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => handleDelete(item.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                        ) : (
+                          <span className="text-red-500">O'chirilgan mol</span>
+                        )}
+                      </CardDescription>
+                    </div>
+                    <span className="text-lg font-bold text-red-600">
+                      {Number(item.amount || 0).toLocaleString()}
+                    </span>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 text-sm text-muted-foreground mb-4">
+                    <div className="flex items-center gap-2">
+                      <CalendarDays className="h-4 w-4" />
+                      <span>{item.date}</span>
+                    </div>
+                    {item.notes && (
+                      <div className="bg-muted p-2 rounded text-xs italic">
+                        "{item.notes}"
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2 pt-2 border-t">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => handleEdit(item)}
+                    >
+                      <Edit className="h-4 w-4 mr-2" /> Tahrirlash
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDelete(item.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
       </main>

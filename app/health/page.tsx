@@ -33,12 +33,15 @@ import {
   Edit,
   AlertCircle,
   HeartPulse,
-  Stethoscope,
   FileText,
   CalendarDays,
+  Menu, // <--- YANGI
+  X, // <--- YANGI
+  Activity,
 } from "lucide-react";
 
 export default function HealthPage() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // <--- YANGI
   const [healthRecords, setHealthRecords] = useState<any[]>([]);
   const [cattle, setCattle] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,11 +68,7 @@ export default function HealthPage() {
         cattleAPI.getAll(),
       ]);
       setHealthRecords(Array.isArray(healthData) ? healthData : []);
-
-      // --- O'ZGARTIRILDI: FILTR OLIB TASHLANDI ---
-      // Endi barcha mollar (sotilganlar ham) chiqadi
       setCattle(Array.isArray(cattleData) ? cattleData : []);
-      // ------------------------------------------
     } catch (error) {
       console.error("Failed to load data:", error);
     } finally {
@@ -151,130 +150,175 @@ export default function HealthPage() {
   };
 
   return (
-    <div className="flex">
-      <SidebarNav />
-      <main className="flex-1 overflow-auto p-8">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">
-              Sog'liqni Saqlash
-            </h1>
-            <p className="text-muted-foreground">
-              Mollarning tibbiy ko'rik va davolash tarixi
-            </p>
-          </div>
-          <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
+    <div className="flex bg-muted/10 min-h-screen relative">
+      {/* 1. DESKTOP SIDEBAR */}
+      <div className="hidden md:block h-full min-h-screen sticky top-0">
+        <SidebarNav />
+      </div>
+
+      {/* 2. MOBILE SIDEBAR (Overlay) */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 flex md:hidden">
+          <div
+            className="fixed inset-0 bg-black/50"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <div className="relative bg-white w-3/4 max-w-xs h-full shadow-xl">
+            <div className="p-4 flex justify-between items-center border-b">
+              <span className="font-bold text-lg">Menu</span>
               <Button
-                onClick={() => {
-                  resetForm();
-                  setEditingId(null);
-                }}
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsMobileMenuOpen(false)}
               >
-                <Plus className="mr-2 h-4 w-4" />
-                Yangi ko'rik qo'shish
+                <X className="h-6 w-6" />
               </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>
-                  {editingId ? "Yozuvni tahrirlash" : "Yangi tibbiy yozuv"}
-                </DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* MOL TANLASH (Barchasi ko'rinadi) */}
-                <div>
-                  <Label htmlFor="cattleId">Mol (Tag Raqam)</Label>
-                  <select
-                    id="cattleId"
-                    required
-                    value={formData.cattleId}
-                    onChange={(e) =>
-                      setFormData({ ...formData, cattleId: e.target.value })
-                    }
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  >
-                    <option value="">Tanlang...</option>
-                    {cattle.map((c: any) => (
-                      <option
-                        key={c.id}
-                        value={c.id}
-                        className={
-                          c.status === 0 ? "text-red-500 bg-red-50" : ""
-                        } // Sotilganlar qizil rangda
-                      >
-                        {c.tag_number} - {c.name || "Nomsiz"}{" "}
-                        {c.status === 0 ? "(Sotilgan)" : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            </div>
+            <SidebarNav />
+          </div>
+        </div>
+      )}
 
-                <div>
-                  <Label htmlFor="healthStatus">Sog'liq Holati</Label>
-                  <Select
-                    value={formData.healthStatus}
-                    onValueChange={(val) =>
-                      setFormData({ ...formData, healthStatus: val })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Holatni tanlang" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Sog'lom">Sog'lom</SelectItem>
-                      <SelectItem value="Kasal">Kasal</SelectItem>
-                      <SelectItem value="Jarohatlangan">
-                        Jarohatlangan
-                      </SelectItem>
-                      <SelectItem value="Emlash">Emlash (Vaksina)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+      <main className="flex-1 overflow-auto p-4 md:p-8 w-full">
+        {/* MOBILE HEADER */}
+        <div className="md:hidden flex items-center justify-between mb-6 pb-4 border-b">
+          <h1 className="text-xl font-bold">Fermer Pro</h1>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setIsMobileMenuOpen(true)}
+          >
+            <Menu className="h-6 w-6" />
+          </Button>
+        </div>
 
-                <div>
-                  <Label htmlFor="checkupDate">Ko'rik Sanasi</Label>
-                  <Input
-                    id="checkupDate"
-                    type="date"
-                    required
-                    value={formData.checkupDate}
-                    onChange={(e) =>
-                      setFormData({ ...formData, checkupDate: e.target.value })
-                    }
-                  />
-                </div>
+        <div className="mb-8 flex flex-col gap-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+                Sog'liqni Saqlash
+              </h1>
+              <p className="text-muted-foreground text-sm">
+                Mollarning tibbiy ko'rik va davolash tarixi
+              </p>
+            </div>
 
-                <div>
-                  <Label htmlFor="treatment">Davolash Usuli / Dorilar</Label>
-                  <Input
-                    id="treatment"
-                    value={formData.treatment}
-                    onChange={(e) =>
-                      setFormData({ ...formData, treatment: e.target.value })
-                    }
-                    placeholder="Masalan: Antibiotik, Vaksina..."
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="vetNotes">Veterinar Izohi</Label>
-                  <Input
-                    id="vetNotes"
-                    value={formData.vetNotes}
-                    onChange={(e) =>
-                      setFormData({ ...formData, vetNotes: e.target.value })
-                    }
-                    placeholder="Qo'shimcha ma'lumotlar"
-                  />
-                </div>
-
-                <Button type="submit" className="w-full">
-                  {editingId ? "Saqlash" : "Qo'shish"}
+            <Dialog open={isOpen} onOpenChange={setIsOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  className="w-full md:w-auto"
+                  onClick={() => {
+                    resetForm();
+                    setEditingId(null);
+                  }}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Yangi ko'rik qo'shish
                 </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent className="max-w-lg overflow-y-auto max-h-[90vh]">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingId ? "Yozuvni tahrirlash" : "Yangi tibbiy yozuv"}
+                  </DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <Label htmlFor="cattleId">Mol (Tag Raqam)</Label>
+                    <select
+                      id="cattleId"
+                      required
+                      value={formData.cattleId}
+                      onChange={(e) =>
+                        setFormData({ ...formData, cattleId: e.target.value })
+                      }
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <option value="">Tanlang...</option>
+                      {cattle.map((c: any) => (
+                        <option
+                          key={c.id}
+                          value={c.id}
+                          className={
+                            c.status === 0 ? "text-red-500 bg-red-50" : ""
+                          }
+                        >
+                          {c.tag_number} - {c.name || "Nomsiz"}{" "}
+                          {c.status === 0 ? "(Sotilgan)" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="healthStatus">Sog'liq Holati</Label>
+                    <Select
+                      value={formData.healthStatus}
+                      onValueChange={(val) =>
+                        setFormData({ ...formData, healthStatus: val })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Holatni tanlang" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Sog'lom">Sog'lom</SelectItem>
+                        <SelectItem value="Kasal">Kasal</SelectItem>
+                        <SelectItem value="Jarohatlangan">
+                          Jarohatlangan
+                        </SelectItem>
+                        <SelectItem value="Emlash">Emlash (Vaksina)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="checkupDate">Ko'rik Sanasi</Label>
+                    <Input
+                      id="checkupDate"
+                      type="date"
+                      required
+                      value={formData.checkupDate}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          checkupDate: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="treatment">Davolash Usuli / Dorilar</Label>
+                    <Input
+                      id="treatment"
+                      value={formData.treatment}
+                      onChange={(e) =>
+                        setFormData({ ...formData, treatment: e.target.value })
+                      }
+                      placeholder="Masalan: Antibiotik, Vaksina..."
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="vetNotes">Veterinar Izohi</Label>
+                    <Input
+                      id="vetNotes"
+                      value={formData.vetNotes}
+                      onChange={(e) =>
+                        setFormData({ ...formData, vetNotes: e.target.value })
+                      }
+                      placeholder="Qo'shimcha ma'lumotlar"
+                    />
+                  </div>
+
+                  <Button type="submit" className="w-full">
+                    {editingId ? "Saqlash" : "Qo'shish"}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {loading ? (
@@ -289,13 +333,11 @@ export default function HealthPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {healthRecords.map((record: any) => {
               const statusClass = getStatusColor(
                 record.healthStatus || "Sog'lom",
               );
-
-              // Molning statusini tekshirish (Agar mol o'chirilgan/sotilgan bo'lsa bildirish)
               const isCattleSold = record.cattle?.status === 0;
 
               return (
@@ -305,19 +347,20 @@ export default function HealthPage() {
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-lg flex items-center gap-2">
+                      <div className="space-y-1">
+                        <CardTitle className="text-base font-bold flex items-center gap-2">
+                          <Activity className="h-4 w-4 text-blue-500" />
                           {record.cattle?.name || "Nomsiz"}
-                          <span
-                            className={`text-sm font-normal px-2 rounded ${isCattleSold ? "bg-red-100 text-red-600" : "bg-secondary text-muted-foreground"}`}
-                          >
-                            {record.cattle?.tag_number || `#${record.cattleId}`}
-                            {isCattleSold && " (Sotilgan)"}
-                          </span>
                         </CardTitle>
-                        <CardDescription className="flex items-center gap-1 mt-1">
-                          <CalendarDays className="h-3 w-3" />{" "}
-                          {record.checkupDate}
+                        <CardDescription className="flex items-center gap-1 text-xs">
+                          <span>
+                            {record.cattle?.tag_number || `#${record.cattleId}`}
+                          </span>
+                          {isCattleSold && (
+                            <span className="text-red-500 font-bold">
+                              (Sotilgan)
+                            </span>
+                          )}
                         </CardDescription>
                       </div>
                       <div
@@ -328,27 +371,34 @@ export default function HealthPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <div className="bg-muted/30 p-2 rounded text-sm">
-                      <div className="flex gap-2 mb-1">
-                        <HeartPulse className="h-4 w-4 text-red-500" />
-                        <span className="font-semibold">Davolash:</span>
-                      </div>
-                      <p className="text-muted-foreground pl-6">
-                        {record.treatment || "Davolash belgilanmagan"}
-                      </p>
+                    <div className="text-sm text-muted-foreground flex items-center gap-2">
+                      <CalendarDays className="h-4 w-4" />
+                      {record.checkupDate}
                     </div>
 
-                    <div className="bg-muted/30 p-2 rounded text-sm">
-                      <div className="flex gap-2 mb-1">
-                        <FileText className="h-4 w-4 text-blue-500" />
-                        <span className="font-semibold">Izoh:</span>
+                    {record.treatment && (
+                      <div className="bg-red-50 p-2 rounded text-sm border border-red-100">
+                        <div className="flex gap-2 mb-1 text-red-700 font-semibold">
+                          <HeartPulse className="h-4 w-4" /> Davolash:
+                        </div>
+                        <p className="text-red-600 pl-6 text-xs">
+                          {record.treatment}
+                        </p>
                       </div>
-                      <p className="text-muted-foreground pl-6">
-                        {record.vetNotes || "Izoh yo'q"}
-                      </p>
-                    </div>
+                    )}
 
-                    <div className="flex gap-2 pt-2">
+                    {record.vetNotes && (
+                      <div className="bg-blue-50 p-2 rounded text-sm border border-blue-100">
+                        <div className="flex gap-2 mb-1 text-blue-700 font-semibold">
+                          <FileText className="h-4 w-4" /> Izoh:
+                        </div>
+                        <p className="text-blue-600 pl-6 text-xs">
+                          {record.vetNotes}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 pt-2 border-t">
                       <Button
                         variant="outline"
                         size="sm"
@@ -363,7 +413,7 @@ export default function HealthPage() {
                         className="flex-1"
                         onClick={() => handleDelete(record.id)}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4 mr-2" /> O'chirish
                       </Button>
                     </div>
                   </CardContent>

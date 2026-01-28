@@ -14,8 +14,6 @@ import { cattleAPI, expensesAPI, healthAPI } from "@/lib/api";
 import {
   BarChart,
   Bar,
-  LineChart,
-  Line,
   PieChart,
   Pie,
   Cell,
@@ -25,17 +23,16 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  AreaChart,
-  Area,
 } from "recharts";
 import {
   TrendingUp,
   TrendingDown,
   DollarSign,
-  Beef,
   Activity,
-  Calendar,
+  Menu, // <--- YANGI
+  X, // <--- YANGI
 } from "lucide-react";
+import { Button } from "@/components/ui/button"; // <--- YANGI
 
 const COLORS = [
   "#0088FE",
@@ -47,6 +44,7 @@ const COLORS = [
 ];
 
 export default function ReportsPage() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // <--- YANGI
   const [loading, setLoading] = useState(true);
 
   // STATISTIKA STATE
@@ -119,11 +117,10 @@ export default function ReportsPage() {
         monthlyData[month].profit -= Number(e.amount);
       });
 
-      // Daromadni oyga bo'lish (Sotilgan sanasi bo'yicha - agar date bo'lsa, yo'qsa updated_at)
+      // Daromadni oyga bo'lish
       cattleList
         .filter((c: any) => c.status === 0)
         .forEach((c: any) => {
-          // Agar sotilgan sana bo'lmasa, hozirgi oyga yozamiz (Demo uchun)
           const dateStr = c.updated_at || new Date().toISOString();
           const month = new Date(dateStr).toLocaleString("uz-UZ", {
             month: "short",
@@ -176,7 +173,7 @@ export default function ReportsPage() {
             cost: totalCost,
           };
         })
-        .sort((a: any, b: any) => b.profit - a.profit); // Eng foydalilar tepada
+        .sort((a: any, b: any) => b.profit - a.profit);
 
       setCattleProfitability(cattleProfits);
 
@@ -201,20 +198,59 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="flex bg-muted/10 min-h-screen">
-      <SidebarNav />
-      <main className="flex-1 overflow-auto p-8">
+    <div className="flex bg-muted/10 min-h-screen relative">
+      {/* 1. DESKTOP SIDEBAR */}
+      <div className="hidden md:block h-full min-h-screen sticky top-0">
+        <SidebarNav />
+      </div>
+
+      {/* 2. MOBILE SIDEBAR (Overlay) */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 flex md:hidden">
+          <div
+            className="fixed inset-0 bg-black/50"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <div className="relative bg-white w-3/4 max-w-xs h-full shadow-xl">
+            <div className="p-4 flex justify-between items-center border-b">
+              <span className="font-bold text-lg">Menu</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <X className="h-6 w-6" />
+              </Button>
+            </div>
+            <SidebarNav />
+          </div>
+        </div>
+      )}
+
+      <main className="flex-1 overflow-auto p-4 md:p-8 w-full">
+        {/* MOBILE HEADER */}
+        <div className="md:hidden flex items-center justify-between mb-6 pb-4 border-b">
+          <h1 className="text-xl font-bold">Fermer Pro</h1>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setIsMobileMenuOpen(true)}
+          >
+            <Menu className="h-6 w-6" />
+          </Button>
+        </div>
+
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground">
             Analitika va Hisobotlar
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Fermaning to'liq moliyaviy va ishlab chiqarish tahlili
           </p>
         </div>
 
-        {/* --- KPI KARTALARI --- */}
-        <div className="grid gap-4 md:grid-cols-4 mb-8">
+        {/* --- KPI KARTALARI (RESPONSIVE GRID) --- */}
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Jami Tushum</CardTitle>
@@ -292,29 +328,48 @@ export default function ReportsPage() {
           <div className="text-center py-12">Hisobot yuklanmoqda...</div>
         ) : (
           <Tabs defaultValue="financial" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="financial">Moliyaviy Tahlil</TabsTrigger>
-              <TabsTrigger value="cattle">Mollar Samaradorligi</TabsTrigger>
-              <TabsTrigger value="health">Sog'liq va Resurslar</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-1 md:grid-cols-3 h-auto">
+              <TabsTrigger value="financial" className="py-2">
+                Moliyaviy Tahlil
+              </TabsTrigger>
+              <TabsTrigger value="cattle" className="py-2">
+                Mollar Samaradorligi
+              </TabsTrigger>
+              <TabsTrigger value="health" className="py-2">
+                Sog'liq va Resurslar
+              </TabsTrigger>
             </TabsList>
 
             {/* --- 1. MOLIYAVIY TAHLIL --- */}
             <TabsContent value="financial" className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+              <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
                 {/* Oylik Dinamika */}
-                <Card className="col-span-4">
+                <Card className="col-span-1 lg:col-span-4">
                   <CardHeader>
                     <CardTitle>Oylik Moliyaviy Dinamika</CardTitle>
                     <CardDescription>
                       Daromad va Xarajatlar taqqoslami
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="pl-2">
+                  <CardContent className="pl-0 md:pl-2">
                     <ResponsiveContainer width="100%" height={350}>
-                      <BarChart data={monthlyFinancials}>
+                      <BarChart
+                        data={monthlyFinancials}
+                        margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+                      >
                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                        <XAxis dataKey="name" />
-                        <YAxis />
+                        <XAxis
+                          dataKey="name"
+                          fontSize={12}
+                          tickLine={false}
+                          axisLine={false}
+                        />
+                        <YAxis
+                          fontSize={12}
+                          tickLine={false}
+                          axisLine={false}
+                          tickFormatter={(value) => `${value / 1000000}M`}
+                        />
                         <Tooltip
                           formatter={(value: number) =>
                             `${value.toLocaleString()} so'm`
@@ -339,7 +394,7 @@ export default function ReportsPage() {
                 </Card>
 
                 {/* Xarajatlar Strukturasi */}
-                <Card className="col-span-3">
+                <Card className="col-span-1 lg:col-span-3">
                   <CardHeader>
                     <CardTitle>Xarajatlar Strukturasi</CardTitle>
                     <CardDescription>
@@ -354,7 +409,7 @@ export default function ReportsPage() {
                           cx="50%"
                           cy="50%"
                           innerRadius={60}
-                          outerRadius={100}
+                          outerRadius={90}
                           paddingAngle={5}
                           dataKey="value"
                         >
@@ -370,7 +425,11 @@ export default function ReportsPage() {
                             `${value.toLocaleString()} so'm`
                           }
                         />
-                        <Legend verticalAlign="bottom" height={36} />
+                        <Legend
+                          verticalAlign="bottom"
+                          height={36}
+                          wrapperStyle={{ fontSize: "12px" }}
+                        />
                       </PieChart>
                     </ResponsiveContainer>
                   </CardContent>
@@ -389,8 +448,8 @@ export default function ReportsPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="rounded-md border">
-                    <table className="w-full text-sm text-left">
+                  <div className="rounded-md border overflow-x-auto">
+                    <table className="w-full text-sm text-left min-w-[600px]">
                       <thead className="bg-muted/50 text-muted-foreground uppercase text-xs">
                         <tr>
                           <th className="px-4 py-3">Tag Raqam</th>
@@ -437,7 +496,7 @@ export default function ReportsPage() {
 
             {/* --- 3. SOG'LIQ STATISTIKASI --- */}
             <TabsContent value="health" className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
                 <Card>
                   <CardHeader>
                     <CardTitle>Sog'liq Holati Bo'yicha</CardTitle>
@@ -447,14 +506,19 @@ export default function ReportsPage() {
                       <BarChart
                         data={healthStats}
                         layout="vertical"
-                        margin={{ left: 20 }}
+                        margin={{ left: 0 }}
                       >
                         <CartesianGrid
                           strokeDasharray="3 3"
                           horizontal={false}
                         />
                         <XAxis type="number" hide />
-                        <YAxis dataKey="name" type="category" width={100} />
+                        <YAxis
+                          dataKey="name"
+                          type="category"
+                          width={80}
+                          fontSize={12}
+                        />
                         <Tooltip />
                         <Bar
                           dataKey="value"

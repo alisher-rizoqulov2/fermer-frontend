@@ -5,9 +5,9 @@ import { SidebarNav } from "@/components/sidebar-nav";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,9 +29,12 @@ import {
   Phone,
   Mail,
   Key,
+  Menu, // <--- YANGI
+  X, // <--- YANGI
 } from "lucide-react";
 
 export default function AdminPage() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // <--- YANGI
   const [admins, setAdmins] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -68,7 +71,6 @@ export default function AdminPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Parol tekshiruvi (faqat yangi qo'shganda)
     if (!editingId && formData.new_password !== formData.confirim_password) {
       alert("Parollar mos kelmadi!");
       return;
@@ -76,7 +78,6 @@ export default function AdminPage() {
 
     try {
       if (editingId) {
-        // Update paytida parol bo'sh bo'lsa, uni yubormaslik kerak (Backend logikasiga ko'ra)
         const updatePayload: any = { ...formData };
         if (!updatePayload.new_password) {
           delete updatePayload.new_password;
@@ -120,7 +121,7 @@ export default function AdminPage() {
       email: item.email || "",
       phone: item.phone || "",
       role: item.role || "admin",
-      new_password: "", // Parolni ko'rsatmaymiz
+      new_password: "",
       confirim_password: "",
     });
     setEditingId(item.id);
@@ -139,21 +140,61 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="flex">
-      <SidebarNav />
-      <main className="flex-1 overflow-auto p-8">
-        <div className="mb-8 flex items-center justify-between">
+    <div className="flex bg-muted/10 min-h-screen relative">
+      {/* 1. DESKTOP SIDEBAR */}
+      <div className="hidden md:block h-full min-h-screen sticky top-0">
+        <SidebarNav />
+      </div>
+
+      {/* 2. MOBILE SIDEBAR (Overlay) */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 flex md:hidden">
+          <div
+            className="fixed inset-0 bg-black/50"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <div className="relative bg-white w-3/4 max-w-xs h-full shadow-xl">
+            <div className="p-4 flex justify-between items-center border-b">
+              <span className="font-bold text-lg">Menu</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <X className="h-6 w-6" />
+              </Button>
+            </div>
+            <SidebarNav />
+          </div>
+        </div>
+      )}
+
+      <main className="flex-1 overflow-auto p-4 md:p-8 w-full">
+        {/* MOBILE HEADER */}
+        <div className="md:hidden flex items-center justify-between mb-6 pb-4 border-b">
+          <h1 className="text-xl font-bold">Fermer Pro</h1>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setIsMobileMenuOpen(true)}
+          >
+            <Menu className="h-6 w-6" />
+          </Button>
+        </div>
+
+        <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">
               Admin Boshqaruvi
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Tizim administratorlari va xodimlarini boshqaring
             </p>
           </div>
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
               <Button
+                className="w-full md:w-auto"
                 onClick={() => {
                   resetForm();
                   setEditingId(null);
@@ -163,16 +204,19 @@ export default function AdminPage() {
                 Yangi admin
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-2xl overflow-y-auto max-h-[90vh]">
               <DialogHeader>
                 <DialogTitle>
                   {editingId ? "Adminni tahrirlash" : "Yangi admin yaratish"}
                 </DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
-                {/* USERNAME & EMAIL */}
+              <form
+                onSubmit={handleSubmit}
+                className="grid grid-cols-1 md:grid-cols-2 gap-4"
+              >
+                {/* USERNAME */}
                 <div>
-                  <Label htmlFor="username">Foydalanuvchi nomi (Login)</Label>
+                  <Label htmlFor="username">Login</Label>
                   <div className="relative">
                     <User className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -187,6 +231,7 @@ export default function AdminPage() {
                     />
                   </div>
                 </div>
+                {/* EMAIL */}
                 <div>
                   <Label htmlFor="email">Email</Label>
                   <div className="relative">
@@ -256,7 +301,7 @@ export default function AdminPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, role: e.target.value })
                     }
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <option value="admin">Admin</option>
                     <option value="super_admin">Super Admin</option>
@@ -266,11 +311,11 @@ export default function AdminPage() {
                 </div>
 
                 {/* PAROL (Faqat yangi yoki o'zgartirishda) */}
-                <div className="col-span-2 pt-2 border-t mt-2">
+                <div className="col-span-1 md:col-span-2 pt-2 border-t mt-2">
                   <Label className="text-muted-foreground mb-2 block">
                     Xavfsizlik (Parol)
                   </Label>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="new_password">Yangi Parol</Label>
                       <div className="relative">
@@ -278,7 +323,7 @@ export default function AdminPage() {
                         <Input
                           id="new_password"
                           type="password"
-                          required={!editingId} // Yangi bo'lsa majburiy
+                          required={!editingId}
                           className="pl-9"
                           value={formData.new_password}
                           onChange={(e) =>
@@ -288,9 +333,7 @@ export default function AdminPage() {
                             })
                           }
                           placeholder={
-                            editingId
-                              ? "O'zgartirish uchun kiriting"
-                              : "********"
+                            editingId ? "O'zgartirish uchun" : "********"
                           }
                         />
                       </div>
@@ -316,7 +359,7 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                <div className="col-span-2 mt-4">
+                <div className="col-span-1 md:col-span-2 mt-4">
                   <Button type="submit" className="w-full">
                     {editingId ? "Saqlash" : "Yaratish"}
                   </Button>
@@ -338,83 +381,67 @@ export default function AdminPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="rounded-lg border overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="border-b bg-muted/50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">
-                      Foydalanuvchi
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">
-                      Ism Familiya
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">
-                      Aloqa
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">
-                      Rol
-                    </th>
-                    <th className="px-6 py-3 text-right text-sm font-semibold">
-                      Amallar
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {admins.map((admin: any) => (
-                    <tr
-                      key={admin.id}
-                      className="border-b hover:bg-muted/30 transition-colors"
+          // JADVAL O'RNIGA RESPONSIVE KARTALAR GRID
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            {admins.map((admin: any) => (
+              <Card
+                key={admin.id}
+                className="hover:shadow-md transition-shadow"
+              >
+                <CardHeader className="flex flex-row items-start justify-between pb-2">
+                  <div className="space-y-1">
+                    <CardTitle className="text-base font-bold flex items-center gap-2">
+                      <User className="h-4 w-4 text-blue-500" />
+                      {admin.username || "---"}
+                    </CardTitle>
+                    <CardDescription>
+                      {admin.first_name} {admin.last_name}
+                    </CardDescription>
+                  </div>
+                  <span
+                    className={`px-2 py-1 rounded text-xs font-bold uppercase ${
+                      admin.role === "super_admin"
+                        ? "bg-purple-100 text-purple-800"
+                        : admin.role === "admin"
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
+                    {admin.role || "admin"}
+                  </span>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 text-sm text-muted-foreground mb-4">
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-3 w-3" />
+                      <span>{admin.email}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-3 w-3" />
+                      <span>{admin.phone}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-2 border-t">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => handleEdit(admin)}
                     >
-                      <td className="px-6 py-4 text-sm font-medium">
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-blue-500" />
-                          {admin.username || "---"}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm font-semibold">
-                        {admin.first_name} {admin.last_name}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">
-                        <div className="flex flex-col text-xs">
-                          <span>{admin.email}</span>
-                          <span>{admin.phone}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            admin.role === "super_admin"
-                              ? "bg-purple-100 text-purple-800"
-                              : admin.role === "admin"
-                                ? "bg-blue-100 text-blue-800"
-                                : "bg-gray-100 text-gray-800"
-                          }`}
-                        >
-                          {admin.role || "admin"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-right space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(admin)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDelete(admin.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      <Edit className="h-4 w-4 mr-2" /> Tahrirlash
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDelete(admin.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
       </main>

@@ -27,10 +27,14 @@ import {
   Search,
   Package,
   MapPin,
-  FileText,
+  Menu, // <--- YANGI
+  X, // <--- YANGI
+  Coins,
+  Scale,
 } from "lucide-react";
 
 export default function InventoryPage() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // <--- YANGI
   const [inventory, setInventory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -74,7 +78,7 @@ export default function InventoryPage() {
         price: Number(formData.price),
         location: formData.location,
         notes: formData.notes,
-        addedDate: new Date().toISOString().split("T")[0], // Avtomatik sana
+        addedDate: new Date().toISOString().split("T")[0],
       };
 
       if (editingId) {
@@ -145,22 +149,63 @@ export default function InventoryPage() {
   }, 0);
 
   return (
-    <div className="flex">
-      <SidebarNav />
-      <main className="flex-1 overflow-auto p-8">
+    <div className="flex bg-muted/10 min-h-screen relative">
+      {/* 1. DESKTOP SIDEBAR */}
+      <div className="hidden md:block h-full min-h-screen sticky top-0">
+        <SidebarNav />
+      </div>
+
+      {/* 2. MOBILE SIDEBAR (Overlay) */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 flex md:hidden">
+          <div
+            className="fixed inset-0 bg-black/50"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <div className="relative bg-white w-3/4 max-w-xs h-full shadow-xl">
+            <div className="p-4 flex justify-between items-center border-b">
+              <span className="font-bold text-lg">Menu</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <X className="h-6 w-6" />
+              </Button>
+            </div>
+            <SidebarNav />
+          </div>
+        </div>
+      )}
+
+      <main className="flex-1 overflow-auto p-4 md:p-8 w-full">
+        {/* MOBILE HEADER */}
+        <div className="md:hidden flex items-center justify-between mb-6 pb-4 border-b">
+          <h1 className="text-xl font-bold">Fermer Pro</h1>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setIsMobileMenuOpen(true)}
+          >
+            <Menu className="h-6 w-6" />
+          </Button>
+        </div>
+
         <div className="mb-8 flex flex-col gap-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">
                 Omborxona
               </h1>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Fermaga kelgan mahsulotlar, yem-xashak va asboblar ro'yxati
               </p>
             </div>
+
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
               <DialogTrigger asChild>
                 <Button
+                  className="w-full md:w-auto"
                   onClick={() => {
                     resetForm();
                     setEditingId(null);
@@ -170,7 +215,7 @@ export default function InventoryPage() {
                   Yangi mahsulot
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl">
+              <DialogContent className="max-w-2xl overflow-y-auto max-h-[90vh]">
                 <DialogHeader>
                   <DialogTitle>
                     {editingId
@@ -180,9 +225,9 @@ export default function InventoryPage() {
                 </DialogHeader>
                 <form
                   onSubmit={handleSubmit}
-                  className="grid grid-cols-2 gap-4"
+                  className="grid grid-cols-1 md:grid-cols-2 gap-4"
                 >
-                  <div className="col-span-2">
+                  <div className="col-span-1 md:col-span-2">
                     <Label htmlFor="itemName">Mahsulot Nomi *</Label>
                     <Input
                       id="itemName"
@@ -271,7 +316,7 @@ export default function InventoryPage() {
                     />
                   </div>
 
-                  <div className="col-span-2 mt-4">
+                  <div className="col-span-1 md:col-span-2 mt-4">
                     <Button type="submit" className="w-full">
                       {editingId ? "Saqlash" : "Qo'shish"}
                     </Button>
@@ -281,7 +326,7 @@ export default function InventoryPage() {
             </Dialog>
           </div>
 
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-secondary/10 p-4 rounded-lg">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-4 rounded-lg shadow-sm">
             <div className="relative w-full md:w-1/3">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -292,11 +337,11 @@ export default function InventoryPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div className="flex flex-col items-end">
+            <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
               <span className="text-sm text-muted-foreground">
                 Ombordagi jami qiymat:
               </span>
-              <span className="text-2xl font-bold text-green-700">
+              <span className="text-xl md:text-2xl font-bold text-green-700">
                 {totalValue.toLocaleString()} so'm
               </span>
             </div>
@@ -317,85 +362,84 @@ export default function InventoryPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="rounded-lg border bg-card overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="text-xs text-muted-foreground uppercase bg-secondary/50 border-b">
-                  <tr>
-                    <th className="px-6 py-3">Mahsulot</th>
-                    <th className="px-6 py-3">Turi</th>
-                    <th className="px-6 py-3">Miqdor</th>
-                    <th className="px-6 py-3">Narx (so'm)</th>
-                    <th className="px-6 py-3">Jami Qiymat</th>
-                    <th className="px-6 py-3">Joylashuv</th>
-                    <th className="px-6 py-3 text-right">Amallar</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredInventory.map((item: any) => {
-                    const itemValue =
-                      (Number(item.quantity) || 0) * (Number(item.price) || 0);
-                    return (
-                      <tr
-                        key={item.id}
-                        className="border-b hover:bg-muted/30 transition-colors"
-                      >
-                        <td className="px-6 py-4 font-medium flex items-center gap-2">
+          // JADVAL O'RNIGA RESPONSIVE KARTALAR GRID
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            {filteredInventory.map((item: any) => {
+              const itemValue =
+                (Number(item.quantity) || 0) * (Number(item.price) || 0);
+
+              return (
+                <Card
+                  key={item.id}
+                  className="hover:shadow-md transition-shadow"
+                >
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-1">
+                        <CardTitle className="text-base font-bold flex items-center gap-2">
                           <Package className="h-4 w-4 text-blue-500" />
                           {item.itemName}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="bg-secondary px-2 py-1 rounded text-xs font-semibold">
-                            {item.itemType || "---"}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 font-bold">
-                          {item.quantity}{" "}
-                          <span className="text-muted-foreground font-normal">
-                            {item.unit}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          {Number(item.price || 0).toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 font-bold text-green-600">
+                        </CardTitle>
+                        <CardDescription className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          {item.location || "Joylashuv yo'q"}
+                        </CardDescription>
+                      </div>
+                      <span className="bg-secondary px-2 py-1 rounded text-xs font-semibold">
+                        {item.itemType || "---"}
+                      </span>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="bg-muted/30 p-2 rounded">
+                        <span className="text-muted-foreground text-xs block">
+                          Miqdor
+                        </span>
+                        <div className="flex items-center gap-1 font-bold">
+                          <Scale className="h-3 w-3" /> {item.quantity}{" "}
+                          {item.unit}
+                        </div>
+                      </div>
+                      <div className="bg-green-50 p-2 rounded border border-green-100">
+                        <span className="text-green-600 text-xs block">
+                          Jami Qiymat
+                        </span>
+                        <div className="flex items-center gap-1 font-bold text-green-700">
+                          <Coins className="h-3 w-3" />{" "}
                           {itemValue.toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 flex items-center gap-1 text-muted-foreground">
-                          {item.location ? (
-                            <>
-                              <MapPin className="h-3 w-3" /> {item.location}
-                            </>
-                          ) : (
-                            "-"
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => handleEdit(item)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => handleDelete(item.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs text-muted-foreground px-1">
+                      <span>
+                        Donasi: {Number(item.price || 0).toLocaleString()} so'm
+                      </span>
+                    </div>
+
+                    <div className="flex gap-2 pt-2 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => handleEdit(item)}
+                      >
+                        <Edit className="h-4 w-4 mr-2" /> Tahrirlash
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => handleDelete(item.id)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" /> O'chirish
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </main>

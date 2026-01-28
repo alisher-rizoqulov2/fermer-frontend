@@ -35,9 +35,12 @@ import {
   CreditCard,
   Banknote,
   Coins,
+  Menu, // <--- YANGI
+  X, // <--- YANGI
 } from "lucide-react";
 
 export default function WalletPage() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // <--- YANGI
   const [wallets, setWallets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -155,20 +158,63 @@ export default function WalletPage() {
   };
 
   return (
-    <div className="flex">
-      <SidebarNav />
-      <main className="flex-1 overflow-auto p-8">
+    <div className="flex bg-muted/10 min-h-screen relative">
+      {/* 1. DESKTOP SIDEBAR */}
+      <div className="hidden md:block h-full min-h-screen sticky top-0">
+        <SidebarNav />
+      </div>
+
+      {/* 2. MOBILE SIDEBAR (Overlay) */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 flex md:hidden">
+          <div
+            className="fixed inset-0 bg-black/50"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <div className="relative bg-white w-3/4 max-w-xs h-full shadow-xl">
+            <div className="p-4 flex justify-between items-center border-b">
+              <span className="font-bold text-lg">Menu</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <X className="h-6 w-6" />
+              </Button>
+            </div>
+            <SidebarNav />
+          </div>
+        </div>
+      )}
+
+      <main className="flex-1 overflow-auto p-4 md:p-8 w-full">
+        {/* MOBILE HEADER */}
+        <div className="md:hidden flex items-center justify-between mb-6 pb-4 border-b">
+          <h1 className="text-xl font-bold">Fermer Pro</h1>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setIsMobileMenuOpen(true)}
+          >
+            <Menu className="h-6 w-6" />
+          </Button>
+        </div>
+
         <div className="mb-8 flex flex-col gap-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Hamyonlar</h1>
-              <p className="text-muted-foreground">
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+                Hamyonlar
+              </h1>
+              <p className="text-muted-foreground text-sm">
                 Fermer hisob raqamlari va kassalarini boshqarish
               </p>
             </div>
+
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
               <DialogTrigger asChild>
                 <Button
+                  className="w-full md:w-auto"
                   onClick={() => {
                     resetForm();
                     setEditingId(null);
@@ -178,7 +224,7 @@ export default function WalletPage() {
                   Yangi hamyon
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-lg">
                 <DialogHeader>
                   <DialogTitle>
                     {editingId
@@ -200,7 +246,7 @@ export default function WalletPage() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="balance">Balans</Label>
                       <Input
@@ -256,19 +302,22 @@ export default function WalletPage() {
             </Dialog>
           </div>
 
-          {/* JAMI BALANS KARTALARI */}
+          {/* JAMI BALANS KARTALARI (RESPONSIVE WRAP) */}
           <div className="flex flex-wrap gap-4">
             {Object.entries(totalBalances).map(([curr, amount]: any) => (
-              <Card key={curr} className="min-w-[200px] shadow-sm">
+              <Card
+                key={curr}
+                className="min-w-[150px] flex-1 md:flex-none shadow-sm"
+              >
                 <CardContent className="p-4 flex items-center gap-3">
                   <div className="p-2 bg-primary/10 rounded-full">
                     <Wallet className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground font-medium">
+                    <p className="text-xs md:text-sm text-muted-foreground font-medium">
                       Jami {curr}
                     </p>
-                    <p className="text-2xl font-bold">
+                    <p className="text-xl md:text-2xl font-bold truncate">
                       {amount.toLocaleString()} {curr}
                     </p>
                   </div>
@@ -289,7 +338,7 @@ export default function WalletPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {wallets.map((wallet: any) => {
               const style = getWalletStyle(wallet.currency);
               return (
@@ -315,7 +364,7 @@ export default function WalletPage() {
                       <p className="text-sm text-muted-foreground">
                         Mavjud mablag':
                       </p>
-                      <p className="text-2xl font-bold tracking-tight">
+                      <p className="text-2xl font-bold tracking-tight text-primary">
                         {Number(wallet.balance || 0).toLocaleString()}{" "}
                         <span className="text-sm font-normal text-muted-foreground">
                           {wallet.currency}
