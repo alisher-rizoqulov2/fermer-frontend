@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 // adminAPI ni import qilishni unutmang (yoki api.ts dan)
-import { cattleAPI, adminAPI } from "@/lib/api";
+import { cattleAPI, adminAPI } from "@/lib/api"; 
 import {
   Plus,
   Edit,
@@ -98,7 +98,7 @@ export default function CattlePage() {
   const loadAdmins = async () => {
     try {
       // API orqali adminlarni olish
-      const data = await adminAPI.getAll();
+      const data = await adminAPI.getAll(); 
       setAdmins(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Adminlarni yuklashda xato:", error);
@@ -238,14 +238,12 @@ export default function CattlePage() {
     // 1. Status bo'yicha
     const statusMatch =
       viewMode === "active" ? item.status === 1 : item.status === 0;
-
+    
     // 2. Qidiruv bo'yicha
     const searchLower = searchTerm.toLowerCase();
     const nameMatch = (item.name || "").toLowerCase().includes(searchLower);
-    const tagMatch = (item.tag_number || "")
-      .toLowerCase()
-      .includes(searchLower);
-
+    const tagMatch = (item.tag_number || "").toLowerCase().includes(searchLower);
+    
     // 3. ADMIN FILTER (Faqat Creator uchun)
     let adminMatch = true;
     if (currentUser?.is_creator && selectedAdminId !== "all") {
@@ -298,22 +296,22 @@ export default function CattlePage() {
                 <X className="h-6 w-6" />
               </Button>
             </div>
-
+            
             {/* Sidebar Navigation */}
             <div className="flex-1 overflow-y-auto">
-              <SidebarNav />
+                <SidebarNav />
             </div>
 
             {/* --- MOBILE LOGOUT TUGMASI --- */}
             <div className="p-4 border-t bg-gray-50">
-              <Button
-                variant="destructive"
-                className="w-full flex items-center gap-2"
-                onClick={handleLogout}
-              >
-                <LogOut className="h-4 w-4" />
-                Tizimdan chiqish
-              </Button>
+                <Button 
+                    variant="destructive" 
+                    className="w-full flex items-center gap-2"
+                    onClick={handleLogout}
+                >
+                    <LogOut className="h-4 w-4" />
+                    Tizimdan chiqish
+                </Button>
             </div>
           </div>
         </div>
@@ -348,31 +346,29 @@ export default function CattlePage() {
             </div>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              
               {/* --- CREATOR UCHUN ADMIN TANLASH (YANGI) --- */}
               {currentUser?.is_creator && (
-                <div className="w-full sm:w-[200px]">
-                  <Select
-                    value={selectedAdminId}
-                    onValueChange={setSelectedAdminId}
-                  >
-                    <SelectTrigger className="w-full bg-white border-blue-300">
-                      <div className="flex items-center gap-2 text-blue-700">
-                        <Users className="h-4 w-4" />
-                        <SelectValue placeholder="Adminni tanlang" />
-                      </div>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">
-                        <span className="font-bold">Barcha Adminlar</span>
-                      </SelectItem>
-                      {admins.map((admin) => (
-                        <SelectItem key={admin.id} value={String(admin.id)}>
-                          {admin.username || admin.email} (ID: {admin.id})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                 <div className="w-full sm:w-[200px]">
+                    <Select value={selectedAdminId} onValueChange={setSelectedAdminId}>
+                        <SelectTrigger className="w-full bg-white border-blue-300">
+                             <div className="flex items-center gap-2 text-blue-700">
+                                <Users className="h-4 w-4" />
+                                <SelectValue placeholder="Adminni tanlang" />
+                             </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">
+                                <span className="font-bold">Barcha Adminlar</span>
+                            </SelectItem>
+                            {admins.map((admin) => (
+                                <SelectItem key={admin.id} value={String(admin.id)}>
+                                    {admin.username || admin.email} (ID: {admin.id})
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                 </div>
               )}
 
               <Button
@@ -747,12 +743,12 @@ export default function CattlePage() {
                           {item.name || item.tag_number}
                         </CardTitle>
                         <CardDescription>
-                          {/* Agar Creator bo'lsa, mol kimnikiligini ko'rsatish */}
-                          {currentUser?.is_creator && (
-                            <span className="block text-blue-600 font-bold text-xs mb-1">
-                              Egasi ID: {item.admin_id}
-                            </span>
-                          )}
+                            {/* Agar Creator bo'lsa, mol kimnikiligini ko'rsatish */}
+                            {currentUser?.is_creator && (
+                                <span className="block text-blue-600 font-bold text-xs mb-1">
+                                    Egasi ID: {item.admin_id}
+                                </span>
+                            )}
                           {item.type || "Turlamagan"}
                         </CardDescription>
                       </div>

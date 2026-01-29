@@ -1,14 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation"; // <--- YANGI QO'SHILDI
 import { SidebarNav } from "@/components/sidebar-nav";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,141 +14,178 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { adminAPI } from "@/lib/api";
 import {
   Plus,
+  Search,
+  User,
+  Shield,
   Trash2,
   Edit,
-  Shield,
-  User,
-  Phone,
-  Mail,
-  Key,
-  Menu, // <--- YANGI
-  X, // <--- YANGI
+  Menu,
+  X,
+  LogOut, // <--- YANGI QO'SHILDI
 } from "lucide-react";
 
 export default function AdminPage() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // <--- YANGI
+  const router = useRouter(); // <--- ROUTER QO'SHILDI
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
   const [admins, setAdmins] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
-  // Backendga mos form state
+  // Form states
   const [formData, setFormData] = useState({
     username: "",
+    email: "",
+    password: "",
+    confirm_password: "",
     first_name: "",
     last_name: "",
-    email: "",
     phone: "",
-    role: "admin",
-    new_password: "",
-    confirim_password: "",
   });
 
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
-
   useEffect(() => {
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      try {
+        setCurrentUser(JSON.parse(userStr));
+      } catch (e) {
+        console.error("User parse error", e);
+      }
+    }
     loadAdmins();
   }, []);
 
   const loadAdmins = async () => {
+    setLoading(true);
     try {
       const data = await adminAPI.getAll();
       setAdmins(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error("Failed to load admins:", error);
+      console.error("Adminlarni yuklashda xato:", error);
     } finally {
       setLoading(false);
     }
   };
 
+  // --- LOGOUT FUNKSIYASI (YANGI) ---
+  const handleLogout = () => {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("user");
+    router.push("/login");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!editingId && formData.new_password !== formData.confirim_password) {
+    if (!editingId && formData.password !== formData.confirm_password) {
       alert("Parollar mos kelmadi!");
       return;
     }
 
     try {
-      if (editingId) {
-        const updatePayload: any = { ...formData };
-        if (!updatePayload.new_password) {
-          delete updatePayload.new_password;
-          delete updatePayload.confirim_password;
-        }
-        await adminAPI.update(editingId, updatePayload);
-      } else {
-        await adminAPI.create(formData);
+      const payload: any = {
+        username: formData.username,
+        email: formData.email,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        phone: formData.phone,
+      };
+
+      if (!editingId) {
+        payload.new_password = formData.password;
+        payload.confirim_password = formData.confirm_password;
       }
 
-      resetForm();
-      setEditingId(null);
+      if (editingId) {
+        await adminAPI.update(editingId, payload);
+      } else {
+        await adminAPI.create(payload);
+      }
+
       setIsOpen(false);
+      resetForm();
       loadAdmins();
-    } catch (error) {
-      console.error("Failed to save admin:", error);
-      alert(
-        "Xatolik! Ma'lumotlarni tekshiring (Email, Username band bo'lishi mumkin).",
-      );
+    } catch (error: any) {
+      console.error("Error:", error);
+      alert(error.response?.data?.message || "Xatolik yuz berdi");
     }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      username: "",
-      first_name: "",
-      last_name: "",
-      email: "",
-      phone: "",
-      role: "admin",
-      new_password: "",
-      confirim_password: "",
-    });
-  };
-
-  const handleEdit = (item: any) => {
-    setFormData({
-      username: item.username || "",
-      first_name: item.first_name || "",
-      last_name: item.last_name || "",
-      email: item.email || "",
-      phone: item.phone || "",
-      role: item.role || "admin",
-      new_password: "",
-      confirim_password: "",
-    });
-    setEditingId(item.id);
-    setIsOpen(true);
   };
 
   const handleDelete = async (id: number) => {
-    if (confirm("Bu adminni o'chirishni xohlaysizmi?")) {
-      try {
-        await adminAPI.delete(id);
-        loadAdmins();
-      } catch (error) {
-        console.error("Failed to delete admin:", error);
-      }
+    try {
+      await adminAPI.delete(id);
+      loadAdmins();
+    } catch (error) {
+      console.error("O'chirishda xato:", error);
+      alert("O'chirish imkonsiz");
     }
   };
 
+  const handleEdit = (admin: any) => {
+    setEditingId(admin.id);
+    setFormData({
+      username: admin.username || "",
+      email: admin.email || "",
+      first_name: admin.first_name || "",
+      last_name: admin.last_name || "",
+      phone: admin.phone || "",
+      password: "",
+      confirm_password: "",
+    });
+    setIsOpen(true);
+  };
+
+  const resetForm = () => {
+    setEditingId(null);
+    setFormData({
+      username: "",
+      email: "",
+      password: "",
+      confirm_password: "",
+      first_name: "",
+      last_name: "",
+      phone: "",
+    });
+  };
+
+  const filteredAdmins = admins.filter(
+    (admin) =>
+      (admin.username || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (admin.email || "").toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
   return (
-    <div className="flex bg-muted/10 min-h-screen relative">
-      {/* 1. DESKTOP SIDEBAR */}
+    <div className="flex relative min-h-screen bg-gray-50/50">
+      {/* Desktop Sidebar */}
       <div className="hidden md:block h-full min-h-screen sticky top-0">
         <SidebarNav />
       </div>
 
-      {/* 2. MOBILE SIDEBAR (Overlay) */}
+      {/* --- MOBILE SIDEBAR (YANGILANDI: LOGOUT QO'SHILDI) --- */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 flex md:hidden">
           <div
             className="fixed inset-0 bg-black/50"
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          <div className="relative bg-white w-3/4 max-w-xs h-full shadow-xl">
+          <div className="relative bg-white w-3/4 max-w-xs h-full shadow-xl flex flex-col">
             <div className="p-4 flex justify-between items-center border-b">
               <span className="font-bold text-lg">Menu</span>
               <Button
@@ -164,13 +196,29 @@ export default function AdminPage() {
                 <X className="h-6 w-6" />
               </Button>
             </div>
-            <SidebarNav />
+
+            {/* Menu Items */}
+            <div className="flex-1 overflow-y-auto">
+              <SidebarNav />
+            </div>
+
+            {/* 🔥 LOGOUT BUTTON 🔥 */}
+            <div className="p-4 border-t bg-gray-50">
+              <Button
+                variant="destructive"
+                className="w-full flex items-center gap-2"
+                onClick={handleLogout}
+              >
+                <LogOut className="h-4 w-4" />
+                Tizimdan chiqish
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
       <main className="flex-1 overflow-auto p-4 md:p-8 w-full">
-        {/* MOBILE HEADER */}
+        {/* Mobile Header */}
         <div className="md:hidden flex items-center justify-between mb-6 pb-4 border-b">
           <h1 className="text-xl font-bold">Fermer Pro</h1>
           <Button
@@ -182,262 +230,230 @@ export default function AdminPage() {
           </Button>
         </div>
 
-        <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-              Admin Boshqaruvi
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              Tizim administratorlari va xodimlarini boshqaring
-            </p>
-          </div>
-          <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
-              <Button
-                className="w-full md:w-auto"
-                onClick={() => {
-                  resetForm();
-                  setEditingId(null);
-                }}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Yangi admin
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl overflow-y-auto max-h-[90vh]">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingId ? "Adminni tahrirlash" : "Yangi admin yaratish"}
-                </DialogTitle>
-              </DialogHeader>
-              <form
-                onSubmit={handleSubmit}
-                className="grid grid-cols-1 md:grid-cols-2 gap-4"
-              >
-                {/* USERNAME */}
-                <div>
-                  <Label htmlFor="username">Login</Label>
-                  <div className="relative">
-                    <User className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="username"
-                      required
-                      className="pl-9"
-                      value={formData.username}
-                      onChange={(e) =>
-                        setFormData({ ...formData, username: e.target.value })
-                      }
-                      placeholder="admin_ali"
-                    />
-                  </div>
-                </div>
-                {/* EMAIL */}
-                <div>
-                  <Label htmlFor="email">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      type="email"
-                      required
-                      className="pl-9"
-                      value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
-                      placeholder="ali@ferma.uz"
-                    />
-                  </div>
-                </div>
+        <div className="mb-8 flex flex-col gap-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+                Admin Boshqaruvi
+              </h1>
+              <p className="text-muted-foreground text-sm">
+                Tizim administratorlari va xodimlarini boshqaring
+              </p>
+            </div>
 
-                {/* ISM & FAMILIYA */}
-                <div>
-                  <Label htmlFor="first_name">Ism</Label>
-                  <Input
-                    id="first_name"
-                    required
-                    value={formData.first_name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, first_name: e.target.value })
-                    }
-                    placeholder="Ali"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="last_name">Familiya</Label>
-                  <Input
-                    id="last_name"
-                    required
-                    value={formData.last_name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, last_name: e.target.value })
-                    }
-                    placeholder="Valiyev"
-                  />
-                </div>
-
-                {/* TELEFON & ROL */}
-                <div>
-                  <Label htmlFor="phone">Telefon</Label>
-                  <div className="relative">
-                    <Phone className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="phone"
-                      required
-                      className="pl-9"
-                      value={formData.phone}
-                      onChange={(e) =>
-                        setFormData({ ...formData, phone: e.target.value })
-                      }
-                      placeholder="+998901234567"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="role">Rol</Label>
-                  <select
-                    id="role"
-                    value={formData.role}
-                    onChange={(e) =>
-                      setFormData({ ...formData, role: e.target.value })
-                    }
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <option value="admin">Admin</option>
-                    <option value="super_admin">Super Admin</option>
-                    <option value="moderator">Moderator</option>
-                    <option value="worker">Ishchi</option>
-                  </select>
-                </div>
-
-                {/* PAROL (Faqat yangi yoki o'zgartirishda) */}
-                <div className="col-span-1 md:col-span-2 pt-2 border-t mt-2">
-                  <Label className="text-muted-foreground mb-2 block">
-                    Xavfsizlik (Parol)
-                  </Label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="new_password">Yangi Parol</Label>
-                      <div className="relative">
-                        <Key className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <div className="flex items-center gap-2">
+              {currentUser?.is_creator && (
+                <Dialog open={isOpen} onOpenChange={setIsOpen}>
+                  <DialogTrigger asChild>
+                    <Button onClick={resetForm}>
+                      <Plus className="mr-2 h-4 w-4" /> Yangi admin
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>
+                        {editingId
+                          ? "Adminni tahrirlash"
+                          : "Yangi admin qo'shish"}
+                      </DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                      {/* Form inputs (username, email...) - o'zgarishsiz */}
+                      <div>
+                        <Label>Username</Label>
                         <Input
-                          id="new_password"
-                          type="password"
-                          required={!editingId}
-                          className="pl-9"
-                          value={formData.new_password}
+                          required
+                          value={formData.username}
                           onChange={(e) =>
                             setFormData({
                               ...formData,
-                              new_password: e.target.value,
+                              username: e.target.value,
                             })
-                          }
-                          placeholder={
-                            editingId ? "O'zgartirish uchun" : "********"
                           }
                         />
                       </div>
-                    </div>
-                    <div>
-                      <Label htmlFor="confirim_password">
-                        Parolni tasdiqlash
-                      </Label>
-                      <Input
-                        id="confirim_password"
-                        type="password"
-                        required={!editingId}
-                        value={formData.confirim_password}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            confirim_password: e.target.value,
-                          })
-                        }
-                        placeholder="********"
-                      />
-                    </div>
-                  </div>
-                </div>
+                      <div>
+                        <Label>Email</Label>
+                        <Input
+                          type="email"
+                          required
+                          value={formData.email}
+                          onChange={(e) =>
+                            setFormData({ ...formData, email: e.target.value })
+                          }
+                        />
+                      </div>
+                      {!editingId && (
+                        <>
+                          <div>
+                            <Label>Parol</Label>
+                            <Input
+                              type="password"
+                              required
+                              value={formData.password}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  password: e.target.value,
+                                })
+                              }
+                            />
+                          </div>
+                          <div>
+                            <Label>Parolni tasdiqlash</Label>
+                            <Input
+                              type="password"
+                              required
+                              value={formData.confirm_password}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  confirm_password: e.target.value,
+                                })
+                              }
+                            />
+                          </div>
+                        </>
+                      )}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label>Ism</Label>
+                          <Input
+                            value={formData.first_name}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                first_name: e.target.value,
+                              })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <Label>Familiya</Label>
+                          <Input
+                            value={formData.last_name}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                last_name: e.target.value,
+                              })
+                            }
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label>Telefon</Label>
+                        <Input
+                          value={formData.phone}
+                          onChange={(e) =>
+                            setFormData({ ...formData, phone: e.target.value })
+                          }
+                        />
+                      </div>
+                      <Button type="submit" className="w-full">
+                        Saqlash
+                      </Button>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </div>
+          </div>
 
-                <div className="col-span-1 md:col-span-2 mt-4">
-                  <Button type="submit" className="w-full">
-                    {editingId ? "Saqlash" : "Yaratish"}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <div className="relative w-full md:w-[300px]">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Admin qidirish..."
+              className="pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
         </div>
 
         {loading ? (
-          <div className="text-center py-12">Yuklanmoqda...</div>
-        ) : admins.length === 0 ? (
-          <Card>
-            <CardContent className="pt-6 text-center py-12">
-              <Shield className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">
-                Hali hech qanday admin yo'q
-              </p>
-            </CardContent>
-          </Card>
+          <div>Yuklanmoqda...</div>
         ) : (
-          // JADVAL O'RNIGA RESPONSIVE KARTALAR GRID
-          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-            {admins.map((admin: any) => (
-              <Card
-                key={admin.id}
-                className="hover:shadow-md transition-shadow"
-              >
-                <CardHeader className="flex flex-row items-start justify-between pb-2">
-                  <div className="space-y-1">
-                    <CardTitle className="text-base font-bold flex items-center gap-2">
-                      <User className="h-4 w-4 text-blue-500" />
-                      {admin.username || "---"}
-                    </CardTitle>
-                    <CardDescription>
-                      {admin.first_name} {admin.last_name}
-                    </CardDescription>
-                  </div>
-                  <span
-                    className={`px-2 py-1 rounded text-xs font-bold uppercase ${
-                      admin.role === "super_admin"
-                        ? "bg-purple-100 text-purple-800"
-                        : admin.role === "admin"
-                          ? "bg-blue-100 text-blue-800"
-                          : "bg-gray-100 text-gray-800"
-                    }`}
-                  >
-                    {admin.role || "admin"}
-                  </span>
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+            {filteredAdmins.map((admin) => (
+              <Card key={admin.id}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    {admin.is_creator ? "SUPER ADMIN" : "ADMIN"}
+                  </CardTitle>
+                  {admin.is_creator ? (
+                    <Shield className="h-4 w-4 text-purple-600" />
+                  ) : (
+                    <User className="h-4 w-4 text-muted-foreground" />
+                  )}
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2 text-sm text-muted-foreground mb-4">
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-3 w-3" />
-                      <span>{admin.email}</span>
+                  <div className="flex items-center space-x-4 py-4">
+                    <div className="flex-1 space-y-1">
+                      <p className="text-lg font-bold leading-none">
+                        {admin.username}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {admin.first_name} {admin.last_name}
+                      </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-3 w-3" />
-                      <span>{admin.phone}</span>
-                    </div>
+                    {admin.is_active ? (
+                      <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full font-bold">
+                        Aktive
+                      </span>
+                    ) : (
+                      <span className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full font-bold">
+                        Blok
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-2 text-sm text-gray-500 mb-4">
+                    <p className="flex items-center gap-2">
+                      <span className="opacity-70">Email:</span> {admin.email}
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <span className="opacity-70">Tel:</span> {admin.phone}
+                    </p>
                   </div>
 
-                  <div className="flex gap-2 pt-2 border-t">
+                  <div className="flex gap-2">
                     <Button
                       variant="outline"
-                      size="sm"
                       className="flex-1"
                       onClick={() => handleEdit(admin)}
                     >
                       <Edit className="h-4 w-4 mr-2" /> Tahrirlash
                     </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDelete(admin.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+
+                    {currentUser?.is_creator && !admin.is_creator && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="icon">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              Ishonchingiz komilmi?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Bu amalni ortga qaytarib bo'lmaydi. Admin butunlay
+                              o'chiriladi.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Bekor qilish</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(admin.id)}
+                            >
+                              O'chirish
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                   </div>
                 </CardContent>
               </Card>

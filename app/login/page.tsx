@@ -158,7 +158,7 @@ export default function LoginPage() {
 
           <div className="mt-6 text-center">
             <p className="text-xs text-gray-400">
-              Muammo bo'lsa texnik yordamga murojaat qiling
+              Muammo bo'lsa texnik yordamga murojaat qiling +998947827771 --SuperAdmin
             </p>
           </div>
         </CardContent>
