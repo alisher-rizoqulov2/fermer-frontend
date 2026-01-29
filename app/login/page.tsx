@@ -2,22 +2,13 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { setAuthToken } from "@/lib/api";
 import { AlertCircle, Tractor } from "lucide-react";
 
-// API manzilini .env dan yoki to'g'ridan-to'g'ri olamiz
-// Agar api.ts da API_BASE_URL bor bo'lsa, o'shandan foydalangan ma'qul.
-// Lekin login uchun alohida fetch yozilgani uchun, bu yerda ham dinamik qilamiz.
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://54.178.217.232:3000/api";
 
@@ -34,7 +25,6 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // API manzilini to'g'irladik
       const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -49,9 +39,42 @@ export default function LoginPage() {
       }
 
       const data = await response.json();
-      setAuthToken(data.accessToken || data.token);
+      const token = data.accessToken || data.token;
 
-      // Muvaffaqiyatli kirgandan so'ng Dashboardga yo'naltirish
+      // 1. Tokenni saqlash (Axios va Storage uchun)
+      setAuthToken(token);
+      localStorage.setItem("accessToken", token); // Ehtiyot shart
+
+      // ---------------------------------------------------------
+      // 🔥 MUHIM O'ZGARISH: Token ichidan Userni olib saqlash
+      // ---------------------------------------------------------
+      if (token) {
+        try {
+          // Tokenni decode qilish (sodda usulda)
+          const base64Url = token.split(".")[1];
+          const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+          const jsonPayload = decodeURIComponent(
+            window
+              .atob(base64)
+              .split("")
+              .map(function (c) {
+                return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+              })
+              .join(""),
+          );
+
+          const userObj = JSON.parse(jsonPayload);
+
+          // Userni localStoragega yozamiz!
+          localStorage.setItem("user", JSON.stringify(userObj));
+
+          console.log("User saqlandi:", userObj); // Tekshirish uchun
+        } catch (err) {
+          console.error("Tokenni o'qishda xato:", err);
+        }
+      }
+      // ---------------------------------------------------------
+
       router.push("/dashboard");
     } catch (err: any) {
       setError(err.message || "Tizimga kirishda xatolik yuz berdi");
@@ -62,7 +85,6 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      {/* Kartani telefonda to'liq ekran, kompyuterda ixcham qilamiz */}
       <Card className="w-full max-w-md shadow-xl border-t-4 border-t-blue-600">
         <CardHeader className="text-center space-y-2">
           <div className="mx-auto bg-blue-100 p-3 rounded-full w-fit mb-2">
@@ -105,7 +127,6 @@ export default function LoginPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Parol</Label>
-                {/* <a href="#" className="text-xs text-blue-600 hover:underline">Parolni unutdingizmi?</a> */}
               </div>
               <Input
                 id="password"

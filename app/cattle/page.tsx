@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { SidebarNav } from "@/components/sidebar-nav";
+import { useRouter } from "next/navigation"; // Router kerak logout uchun
 import {
   Card,
   CardContent,
@@ -26,7 +27,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cattleAPI } from "@/lib/api";
+// adminAPI ni import qilishni unutmang (yoki api.ts dan)
+import { cattleAPI, adminAPI } from "@/lib/api";
 import {
   Plus,
   Edit,
@@ -36,12 +38,22 @@ import {
   DollarSign,
   CalendarClock,
   CreditCard,
-  Menu, // <--- YANGI
-  X, // <--- YANGI
+  Menu,
+  X,
+  LogOut, // <--- Logout ikonka
+  User, // <--- User ikonka
+  Users, // <--- Users ikonka
 } from "lucide-react";
 
 export default function CattlePage() {
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // --- CREATOR MODE STATES ---
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [admins, setAdmins] = useState<any[]>([]);
+  const [selectedAdminId, setSelectedAdminId] = useState<string>("all");
+  // ---------------------------
 
   const [cattle, setCattle] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,6 +80,50 @@ export default function CattlePage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
+  // 1. Userni aniqlash va Adminlarni yuklash
+  useEffect(() => {
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      setCurrentUser(user);
+
+      // Agar Creator bo'lsa, adminlar ro'yxatini olib kelamiz
+      if (user.is_creator) {
+        loadAdmins();
+      }
+    }
+    loadCattle();
+  }, []);
+
+  const loadAdmins = async () => {
+    try {
+      // API orqali adminlarni olish
+      const data = await adminAPI.getAll();
+      setAdmins(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Adminlarni yuklashda xato:", error);
+    }
+  };
+
+  const loadCattle = async () => {
+    try {
+      const data = await cattleAPI.getAll();
+      setCattle(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Failed to load cattle:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Logout funksiyasi (Mobile uchun)
+  const handleLogout = () => {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("user");
+    router.push("/login");
+  };
+
   const calculateEstimatedProfit = () => {
     const sale = Number(formData.sale_price) || 0;
     const buy = Number(formData.purchase_price) || 0;
@@ -83,26 +139,10 @@ export default function CattlePage() {
         );
       }
     }
-
     return sale - (buy + feed + otherExpenses);
   };
 
   const estimatedProfit = calculateEstimatedProfit();
-
-  useEffect(() => {
-    loadCattle();
-  }, []);
-
-  const loadCattle = async () => {
-    try {
-      const data = await cattleAPI.getAll();
-      setCattle(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Failed to load cattle:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const calculateTotalExpenses = (expenses: any[]) => {
     if (!expenses || !Array.isArray(expenses)) return 0;
@@ -114,6 +154,7 @@ export default function CattlePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // ... validatsiyalar ...
     if (formData.status === 0) {
       if (!formData.sale_price) {
         alert("Sotish narxini kiriting!");
@@ -159,9 +200,9 @@ export default function CattlePage() {
       name: "",
       tag_number: "",
       type: "",
+      breed: "",
       weight: "",
       age: "",
-      breed: "",
       purchase_price: "",
       purchase_date: "",
       status: 1,
@@ -192,18 +233,31 @@ export default function CattlePage() {
     setIsOpen(true);
   };
 
+  // --- FILTRLASH MANTIQI (UPDATED) ---
   const filteredCattle = cattle.filter((item) => {
+    // 1. Status bo'yicha
     const statusMatch =
       viewMode === "active" ? item.status === 1 : item.status === 0;
+
+    // 2. Qidiruv bo'yicha
     const searchLower = searchTerm.toLowerCase();
     const nameMatch = (item.name || "").toLowerCase().includes(searchLower);
     const tagMatch = (item.tag_number || "")
       .toLowerCase()
       .includes(searchLower);
-    return statusMatch && (nameMatch || tagMatch);
+
+    // 3. ADMIN FILTER (Faqat Creator uchun)
+    let adminMatch = true;
+    if (currentUser?.is_creator && selectedAdminId !== "all") {
+      // Backenddan admin_id raqam bo'lib keladi
+      adminMatch = item.admin_id === Number(selectedAdminId);
+    }
+
+    return statusMatch && (nameMatch || tagMatch) && adminMatch;
   });
 
-  const soldStats = cattle
+  // Statistikani ham faqat filtrlangan ma'lumotdan olamiz
+  const soldStats = filteredCattle // <-- filteredCattle ishlatildi
     .filter((c) => c.status === 0)
     .reduce(
       (acc, curr) => {
@@ -226,14 +280,14 @@ export default function CattlePage() {
         <SidebarNav />
       </div>
 
-      {/* 2. MOBILE SIDEBAR (Overlay) */}
+      {/* 2. MOBILE SIDEBAR (YANGILANGAN) */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 flex md:hidden">
           <div
             className="fixed inset-0 bg-black/50"
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          <div className="relative bg-white w-3/4 max-w-xs h-full shadow-xl">
+          <div className="relative bg-white w-3/4 max-w-xs h-full shadow-xl flex flex-col">
             <div className="p-4 flex justify-between items-center border-b">
               <span className="font-bold text-lg">Menu</span>
               <Button
@@ -244,7 +298,23 @@ export default function CattlePage() {
                 <X className="h-6 w-6" />
               </Button>
             </div>
-            <SidebarNav />
+
+            {/* Sidebar Navigation */}
+            <div className="flex-1 overflow-y-auto">
+              <SidebarNav />
+            </div>
+
+            {/* --- MOBILE LOGOUT TUGMASI --- */}
+            <div className="p-4 border-t bg-gray-50">
+              <Button
+                variant="destructive"
+                className="w-full flex items-center gap-2"
+                onClick={handleLogout}
+              >
+                <LogOut className="h-4 w-4" />
+                Tizimdan chiqish
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -263,7 +333,6 @@ export default function CattlePage() {
         </div>
 
         <div className="mb-8 flex flex-col gap-4">
-          {/* HEADER SECTION (RESPONSIVE) */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-foreground">
@@ -279,6 +348,33 @@ export default function CattlePage() {
             </div>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              {/* --- CREATOR UCHUN ADMIN TANLASH (YANGI) --- */}
+              {currentUser?.is_creator && (
+                <div className="w-full sm:w-[200px]">
+                  <Select
+                    value={selectedAdminId}
+                    onValueChange={setSelectedAdminId}
+                  >
+                    <SelectTrigger className="w-full bg-white border-blue-300">
+                      <div className="flex items-center gap-2 text-blue-700">
+                        <Users className="h-4 w-4" />
+                        <SelectValue placeholder="Adminni tanlang" />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">
+                        <span className="font-bold">Barcha Adminlar</span>
+                      </SelectItem>
+                      {admins.map((admin) => (
+                        <SelectItem key={admin.id} value={String(admin.id)}>
+                          {admin.username || admin.email} (ID: {admin.id})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <Button
                 variant={viewMode === "active" ? "outline" : "default"}
                 onClick={() =>
@@ -310,8 +406,8 @@ export default function CattlePage() {
                     Yangi mol
                   </Button>
                 </DialogTrigger>
+                {/* ... DIALOG CONTENT (O'ZGARISHSIZ QOLDIRILDI) ... */}
                 <DialogContent className="max-w-3xl overflow-y-auto max-h-[90vh]">
-                  {/* DIALOG ICHINI QISQARTIRDIM (O'ZGARMAGAN, FAQAT KO'RINISHI) */}
                   <DialogHeader>
                     <DialogTitle>
                       {editingId
@@ -323,13 +419,8 @@ export default function CattlePage() {
                     onSubmit={handleSubmit}
                     className="grid grid-cols-1 md:grid-cols-2 gap-4"
                   >
-                    {/* ... FORMA KODLARI O'Z HOLICHA QOLADI, FAQAT GRID RESPONSIVE QILINDI ... */}
-                    {/* Yuqoridagi form kodingizni aynan shu yerga qo'ying. 
-                        Men faqat `grid-cols-2` o'rniga `grid-cols-1 md:grid-cols-2` qildim. 
-                    */}
                     {editingId && (
                       <div className="col-span-1 md:col-span-2 p-4 border rounded-lg bg-secondary/10">
-                        {/* ... Status Switch code ... */}
                         <div className="flex items-center justify-between mb-4">
                           <Label className="text-base font-bold">
                             Mol Statusi
@@ -460,8 +551,6 @@ export default function CattlePage() {
                         )}
                       </div>
                     )}
-
-                    {/* Oddiy inputlar */}
                     <div>
                       <Label>Tag Raqami</Label>
                       <Input
@@ -548,7 +637,6 @@ export default function CattlePage() {
                         }
                       />
                     </div>
-
                     <div className="col-span-1 md:col-span-2 mt-4">
                       <Button type="submit" className="w-full">
                         {editingId ? "Saqlash" : "Qo'shish"}
@@ -560,7 +648,7 @@ export default function CattlePage() {
             </div>
           </div>
 
-          {/* --- STATISTIKA PANELI --- */}
+          {/* --- STATISTIKA (UPDATED: SELECTED ADMIN BO'YICHA) --- */}
           {viewMode === "sold" && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-2 animate-in fade-in slide-in-from-top-4">
               <Card className="bg-green-50 border-green-200">
@@ -616,7 +704,7 @@ export default function CattlePage() {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Qidirish..."
+              placeholder="Qidirish (Nomi yoki Tag raqami)..."
               className="pl-8 w-full md:w-[300px]"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -624,8 +712,7 @@ export default function CattlePage() {
           </div>
         </div>
 
-        {/* --- MOLLAR RO'YXATI (RESPONSIVE GRID) --- */}
-        {/* Mobile: 1 ta, Tablet: 2 ta, Desktop: 3 ta */}
+        {/* --- MOLLAR RO'YXATI --- */}
         {loading ? (
           <div className="text-center py-12">Yuklanmoqda...</div>
         ) : filteredCattle.length === 0 ? (
@@ -660,6 +747,12 @@ export default function CattlePage() {
                           {item.name || item.tag_number}
                         </CardTitle>
                         <CardDescription>
+                          {/* Agar Creator bo'lsa, mol kimnikiligini ko'rsatish */}
+                          {currentUser?.is_creator && (
+                            <span className="block text-blue-600 font-bold text-xs mb-1">
+                              Egasi ID: {item.admin_id}
+                            </span>
+                          )}
                           {item.type || "Turlamagan"}
                         </CardDescription>
                       </div>
@@ -679,6 +772,7 @@ export default function CattlePage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2 text-sm">
+                      {/* ... CARD CONTENT (O'ZGARISHSIZ QOLADI) ... */}
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Zot:</span>
                         <span className="font-medium">
