@@ -29,10 +29,10 @@ import {
   TrendingDown,
   DollarSign,
   Activity,
-  Menu, // <--- YANGI
-  X, // <--- YANGI
+  Menu,
+  X,
 } from "lucide-react";
-import { Button } from "@/components/ui/button"; // <--- YANGI
+import { Button } from "@/components/ui/button";
 
 const COLORS = [
   "#0088FE",
@@ -44,7 +44,7 @@ const COLORS = [
 ];
 
 export default function ReportsPage() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // <--- YANGI
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // STATISTIKA STATE
@@ -77,23 +77,39 @@ export default function ReportsPage() {
       const expenseList = Array.isArray(expenses) ? expenses : [];
       const healthList = Array.isArray(health) ? health : [];
 
-      // 1. UMUMIY MOLIYA (KPI)
-      const totalExpenses = expenseList.reduce(
+      // 1. UMUMIY FERMA XARAJATLARI (Svet, Gaz, va hokazo)
+      const totalGlobalExpenses = expenseList.reduce(
         (sum: number, e: any) => sum + (Number(e.amount) || 0),
         0,
       );
 
-      const totalIncome = cattleList
-        .filter((c: any) => c.status === 0)
-        .reduce((sum: number, c: any) => sum + (Number(c.sale_price) || 0), 0);
+      // 2. SOTILGAN MOLLARNI TAHLILI (Daromad va Tannarx)
+      const soldCattle = cattleList.filter((c: any) => c.status === 0);
 
-      const netProfit = totalIncome - totalExpenses;
+      const totalIncome = soldCattle.reduce(
+        (sum: number, c: any) => sum + (Number(c.sale_price) || 0),
+        0,
+      );
+
+      // Sotilgan mollarni tannarxi (Olingan narxi + Ozuqa + Boshqa xarajatlari)
+      const totalCOGS = soldCattle.reduce((sum: number, c: any) => {
+        const buyPrice = Number(c.purchase_price) || 0;
+        const feedCost = Number(c.feed_cost) || 0;
+        const specificExp = Array.isArray(c.expenses)
+          ? c.expenses.reduce((s: number, x: any) => s + Number(x.amount), 0)
+          : 0;
+        return sum + (buyPrice + feedCost + specificExp);
+      }, 0);
+
+      // SOF FOYDA = Jami Tushum - (Sotilgan mollarni tannarxi + Umumiy Xarajatlar)
+      const netProfit = totalIncome - (totalCOGS + totalGlobalExpenses);
+
       const profitMargin =
         totalIncome > 0 ? ((netProfit / totalIncome) * 100).toFixed(1) : 0;
 
       setStats({
         totalIncome,
-        totalExpenses,
+        totalExpenses: totalGlobalExpenses, // Kartada chiqim sifatida ko'rsatish uchun
         netProfit,
         profitMargin: Number(profitMargin),
       });
@@ -117,25 +133,28 @@ export default function ReportsPage() {
         monthlyData[month].profit -= Number(e.amount);
       });
 
-      // Daromadni oyga bo'lish
-      cattleList
-        .filter((c: any) => c.status === 0)
-        .forEach((c: any) => {
-          const dateStr = c.updated_at || new Date().toISOString();
-          const month = new Date(dateStr).toLocaleString("uz-UZ", {
-            month: "short",
-          });
-
-          if (!monthlyData[month])
-            monthlyData[month] = {
-              name: month,
-              income: 0,
-              expense: 0,
-              profit: 0,
-            };
-          monthlyData[month].income += Number(c.sale_price);
-          monthlyData[month].profit += Number(c.sale_price);
+      // Daromad va Foydani oyga bo'lish
+      soldCattle.forEach((c: any) => {
+        const dateStr = c.updated_at || new Date().toISOString(); // Sotilgan vaqti
+        const month = new Date(dateStr).toLocaleString("uz-UZ", {
+          month: "short",
         });
+
+        if (!monthlyData[month])
+          monthlyData[month] = {
+            name: month,
+            income: 0,
+            expense: 0,
+            profit: 0,
+          };
+
+        const income = Number(c.sale_price) || 0;
+        const cost =
+          (Number(c.purchase_price) || 0) + (Number(c.feed_cost) || 0);
+
+        monthlyData[month].income += income;
+        monthlyData[month].profit += income - cost;
+      });
 
       // Oylarni tartiblash va arrayga o'tkazish
       const sortedMonthly = Object.values(monthlyData);
@@ -151,7 +170,7 @@ export default function ReportsPage() {
         Object.entries(expCat).map(([name, value]) => ({ name, value })),
       );
 
-      // 4. MOLLAR SAMARADORLIGI (Top Profit/Loss)
+      // 4. MOLLAR SAMARADORLIGI (Har bir mol bo'yicha)
       const cattleProfits = cattleList
         .map((c: any) => {
           const soldPrice = c.status === 0 ? Number(c.sale_price) || 0 : 0;
@@ -161,8 +180,10 @@ export default function ReportsPage() {
             ? c.expenses.reduce((s: number, x: any) => s + Number(x.amount), 0)
             : 0;
 
+          // Jami tannarx
           const totalCost = buyPrice + feedCost + otherExp;
-          const profit = soldPrice - totalCost;
+          // Foyda
+          const profit = soldPrice > 0 ? soldPrice - totalCost : -totalCost;
 
           return {
             id: c.tag_number || c.id,
@@ -173,7 +194,7 @@ export default function ReportsPage() {
             cost: totalCost,
           };
         })
-        .sort((a: any, b: any) => b.profit - a.profit);
+        .sort((a: any, b: any) => b.profit - a.profit); // Foyda bo'yicha saralash
 
       setCattleProfitability(cattleProfits);
 
@@ -204,7 +225,7 @@ export default function ReportsPage() {
         <SidebarNav />
       </div>
 
-      {/* 2. MOBILE SIDEBAR (Overlay) */}
+      {/* 2. MOBILE SIDEBAR */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 flex md:hidden">
           <div
@@ -249,7 +270,7 @@ export default function ReportsPage() {
           </p>
         </div>
 
-        {/* --- KPI KARTALARI (RESPONSIVE GRID) --- */}
+        {/* --- KPI KARTALARI --- */}
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -269,7 +290,7 @@ export default function ReportsPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Jami Xarajat
+                Jami Xarajat (Ferma)
               </CardTitle>
               <TrendingDown className="h-4 w-4 text-red-500" />
             </CardHeader>
@@ -304,7 +325,9 @@ export default function ReportsPage() {
               >
                 {stats.netProfit.toLocaleString()} so'm
               </div>
-              <p className="text-xs text-muted-foreground">Tushum - Xarajat</p>
+              <p className="text-xs text-muted-foreground">
+                Tushum - (Mol Tannarxi + Xarajat)
+              </p>
             </CardContent>
           </Card>
 
@@ -455,7 +478,9 @@ export default function ReportsPage() {
                           <th className="px-4 py-3">Tag Raqam</th>
                           <th className="px-4 py-3">Nom</th>
                           <th className="px-4 py-3">Status</th>
-                          <th className="px-4 py-3 text-right">Jami Xarajat</th>
+                          <th className="px-4 py-3 text-right">
+                            Jami Xarajat (Olish + Ozuqa)
+                          </th>
                           <th className="px-4 py-3 text-right">Sotuv Narxi</th>
                           <th className="px-4 py-3 text-right">Sof Foyda</th>
                         </tr>

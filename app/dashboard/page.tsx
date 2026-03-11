@@ -33,15 +33,14 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   CalendarClock,
-  Menu, // <--- YANGI
-  X, // <--- YANGI
+  Menu,
+  X,
 } from "lucide-react";
-import { Button } from "@/components/ui/button"; // <--- YANGI
+import { Button } from "@/components/ui/button";
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
 
 export default function DashboardPage() {
-  // Mobile Menu State
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const [stats, setStats] = useState({
@@ -78,29 +77,42 @@ export default function DashboardPage() {
       const walletList = Array.isArray(wallet) ? wallet : [];
       const healthList = Array.isArray(health) ? health : [];
 
+      // 1. Umumiy tashqi xarajatlar (Svet, Gaz, Ish haqi va h.k)
       const totalGlobalExpenses = expenseList.reduce(
         (sum: number, e: any) => sum + (Number(e.amount) || 0),
         0,
       );
 
+      // 2. Jami Tushum (Faqat sotilganlar)
       const totalIncome = cattleList
         .filter((c: any) => c.status === 0)
         .reduce((sum: number, c: any) => sum + (Number(c.sale_price) || 0), 0);
 
-      const netProfit = cattleList
+      // 3. SOF FOYDA (To'g'rilangan hisob-kitob)
+      // Formul: (Sotuv - (Olish + Ozuqa + Molga qilingan xarajat)) - Umumiy Xarajat
+      const profitFromSoldCattle = cattleList
         .filter((c: any) => c.status === 0)
         .reduce((profit: number, cow: any) => {
           const soldPrice = Number(cow.sale_price) || 0;
-          const buyPrice = Number(cow.purchase_price) || 0;
+          const buyPrice = Number(cow.purchase_price) || 0; // <-- Olingan narxi
+          const feedCost = Number(cow.feed_cost) || 0; // <-- Yegan ozuqasi
+
+          // Molni o'ziga qilingan alohida xarajatlar (ukol, doktor)
           const cowSpecificExpenses = Array.isArray(cow.expenses)
             ? cow.expenses.reduce(
                 (s: number, e: any) => s + (Number(e.amount) || 0),
                 0,
               )
             : 0;
-          const cowProfit = soldPrice - (buyPrice + cowSpecificExpenses);
+
+          // Bitta moldan qolgan foyda
+          const cowProfit =
+            soldPrice - (buyPrice + feedCost + cowSpecificExpenses);
           return profit + cowProfit;
         }, 0);
+
+      // Yakuniy Sof Foyda = Mollar foydasi - Umumiy ferma xarajatlari
+      const finalNetProfit = profitFromSoldCattle - totalGlobalExpenses;
 
       const activeCattle = cattleList.filter((c: any) => c.status === 1).length;
       const soldCattle = cattleList.filter((c: any) => c.status === 0).length;
@@ -111,7 +123,7 @@ export default function DashboardPage() {
         soldCattle,
         totalExpenses: totalGlobalExpenses,
         totalIncome,
-        netProfit: netProfit,
+        netProfit: finalNetProfit, // <-- Yangilangan summa
         walletBalance: walletList.reduce(
           (sum: number, w: any) => sum + (Number(w.balance) || 0),
           0,
@@ -119,6 +131,7 @@ export default function DashboardPage() {
         healthRecords: healthList.length,
       });
 
+      // Grafiklar uchun ma'lumotlar
       const expensesByCategory = expenseList.reduce((acc: any, curr: any) => {
         const type = curr.expenseType || "Boshqa";
         acc[type] = (acc[type] || 0) + Number(curr.amount);
@@ -176,12 +189,12 @@ export default function DashboardPage() {
 
   return (
     <div className="flex bg-muted/10 min-h-screen relative">
-      {/* 1. DESKTOP SIDEBAR (Telefonda yashirinadi) */}
+      {/* 1. DESKTOP SIDEBAR */}
       <div className="hidden md:block h-full min-h-screen sticky top-0">
         <SidebarNav />
       </div>
 
-      {/* 2. MOBILE SIDEBAR (Overlay) */}
+      {/* 2. MOBILE SIDEBAR */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 flex md:hidden">
           <div
@@ -231,8 +244,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* --- KPI KARTALAR (RESPONSIVE GRID) --- */}
-        {/* grid-cols-1 (mobile) -> grid-cols-2 (tablet) -> grid-cols-4 (desktop) */}
+        {/* --- KPI KARTALAR --- */}
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-8">
           <Card className="border-l-4 border-l-blue-500 shadow-sm hover:shadow-md transition-all">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -275,7 +287,7 @@ export default function DashboardPage() {
                 {stats.netProfit.toLocaleString()} so'm
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Sotuv - (Olish + Xarajat)
+                Sotuv - (Olish + Ozuqa + Xarajat)
               </p>
             </CardContent>
           </Card>
@@ -315,8 +327,7 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        {/* GRAFIKLAR (RESPONSIVE) */}
-        {/* Mobile: 1 ustun, Desktop: 7 ustun (4+3) */}
+        {/* GRAFIKLAR */}
         <div className="grid gap-4 grid-cols-1 lg:grid-cols-7 mb-8">
           <Card className="col-span-1 lg:col-span-4 shadow-sm">
             <CardHeader>
@@ -336,7 +347,7 @@ export default function DashboardPage() {
                     <YAxis
                       dataKey="name"
                       type="category"
-                      width={80} // Telefonda joy tejash uchun
+                      width={80}
                       tick={{ fontSize: 11 }}
                     />
                     <Tooltip

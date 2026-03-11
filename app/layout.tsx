@@ -1,16 +1,15 @@
 import React from "react";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"] });
-const geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Fermer Pro - Qishloq Xo'jaligi Boshqaruvi",
   description: "Zamonaviy fermerlik boshqaruv tizimi",
-  generator: "v0.app",
 };
 
 export default function RootLayout({
@@ -19,11 +18,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // O'ZGARISH: h-full classi qo'shildi
-    <html lang="uz" className="h-full">
-      <body className={`font-sans antialiased h-full`}>
-        {children}
-        <Analytics />
+    <html lang="uz" suppressHydrationWarning>
+      <body className={`${geist.className} antialiased h-full`}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+          <Analytics />
+        </ThemeProvider>
       </body>
     </html>
   );
