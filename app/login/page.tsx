@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { setAuthToken } from "@/lib/api";
 import { AlertCircle, Tractor } from "lucide-react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://54.178.217.232/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://54.178.217.232:3000/api";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
